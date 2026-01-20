@@ -3,133 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务 | 全云端同步</title>
+    <title>恒丰财务 | 专业云端对账</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --main: #0071e3; --success: #34c759; --danger: #ff3b30; --bg: #f5f5f7; --card: #ffffff; --text: #1d1d1f; --sub: #86868b; }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: -apple-system, "SF Pro Display", "PingFang SC", sans-serif; background: var(--bg); margin: 0; color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* 导航 */
-        .nav { height: 64px; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; flex-shrink: 0; z-index: 100; }
-        .nav-title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; }
-        .sync-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); }
+        /* 导航与汇总 */
+        .nav { height: 60px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; }
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 24px; flex-shrink: 0; }
+        .card { background: var(--card); padding: 18px 22px; border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 0.5px solid rgba(0,0,0,0.05); }
+        .val { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; margin-top: 4px; }
 
-        /* 汇总卡片：玻璃拟态 */
-        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 24px 30px; flex-shrink: 0; }
-        .card { background: var(--card); padding: 24px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); border: 0.5px solid rgba(0,0,0,0.05); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
-        .label { font-size: 13px; color: var(--sub); margin-bottom: 6px; font-weight: 500; }
-        .val { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
-
-        /* 时间筛选器 */
-        .filter-bar { padding: 0 30px 15px; display: flex; gap: 15px; align-items: center; font-size: 13px; color: var(--sub); }
-        .date-input { border: 1px solid #d1d1d6; border-radius: 8px; padding: 6px 10px; font-size: 13px; background: #fff; outline: none; transition: 0.2s; }
-        .date-input:focus { border-color: var(--main); ring: 2px var(--main); }
-
-        /* 主内容布局 */
-        .main { flex: 1; display: flex; gap: 24px; padding: 0 30px 30px; overflow: hidden; }
-        .box { background: var(--card); border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 0.5px solid rgba(0,0,0,0.05); }
-        
-        /* 列表优化 */
+        /* 主内容布局：1:3 比例 */
+        .main { flex: 1; display: flex; gap: 20px; padding: 0 24px 24px; overflow: hidden; }
+        .box { background: var(--card); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.02); border: 0.5px solid rgba(0,0,0,0.05); }
         .scroll { overflow-y: auto; flex: 1; }
-        .scroll::-webkit-scrollbar { width: 5px; }
-        .scroll::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 10px; }
         
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th { background: rgba(250,250,252,0.9); padding: 14px 15px; font-size: 11px; color: var(--sub); position: sticky; top: 0; z-index: 10; text-align: left; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 16px 15px; font-size: 14px; border-bottom: 0.5px solid #f2f2f7; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* 左侧列表：极简 */
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; padding: 12px 15px; font-size: 11px; color: var(--sub); text-align: left; position: sticky; top: 0; z-index: 10; border-bottom: 0.5px solid #eee; }
+        td { padding: 15px; font-size: 14px; border-bottom: 0.5px solid #f5f5f7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         tr:hover td { background: #f9f9fb; cursor: pointer; }
         .active-row td { background: #f2f8ff !important; color: var(--main); font-weight: 600; }
-        
-        /* 标签与按钮 */
-        .tag-bal { background: #fff2f2; color: var(--danger); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; }
-        .tag-red { background: #ff3b30; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 5px; }
+        .tag-bal { background: #fff2f2; color: var(--danger); padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
 
-        /* 详情视图精修 */
-        .detail-header { padding: 30px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .client-name { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-        .input-group { background: #f5f5f7; padding: 24px; border-radius: 20px; margin: 24px; border: 0.5px solid #e5e5ea; }
+        /* 右侧详情：双列架构 */
+        .detail-layout { display: flex; flex-direction: column; height: 100%; }
+        .detail-header { padding: 24px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .dual-columns { display: flex; flex: 1; overflow: hidden; gap: 1px; background: #eee; } /* 分割线效果 */
+        .column { flex: 1; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+        .col-header { padding: 15px 20px; background: #fafafa; font-size: 12px; font-weight: 600; color: var(--sub); border-bottom: 0.5px solid #eee; }
         
-        .btn { background: var(--main); color: #fff; border: none; padding: 14px 24px; border-radius: 14px; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 15px; }
-        .btn:hover { opacity: 0.9; transform: scale(1.02); }
-        .btn-del-record { color: var(--sub); cursor: pointer; font-size: 18px; transition: 0.2s; padding: 4px; }
-        .btn-del-record:hover { color: var(--danger); }
-        .btn-client-del { color: var(--sub); border: 0.5px solid #d1d1d6; padding: 6px 12px; border-radius: 10px; font-size: 12px; background: #fff; }
-        .btn-client-del:hover { color: var(--danger); border-color: var(--danger); }
-
-        @media (max-width: 1024px) { .main { flex-direction: column; overflow-y: auto; } .summary-grid { grid-template-columns: 1fr; } }
+        /* 录入区 */
+        .input-bar { padding: 20px; background: #fff; border-top: 0.5px solid #eee; display: flex; gap: 12px; align-items: center; }
+        .date-input { border: 1px solid #d1d1d6; border-radius: 10px; padding: 10px; font-size: 14px; outline: none; }
+        .btn { background: var(--main); color: #fff; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn:hover { transform: scale(1.02); }
+        .btn-del { color: var(--sub); cursor: pointer; font-size: 16px; margin-left: 10px; }
+        .btn-del:hover { color: var(--danger); }
     </style>
 </head>
 <body>
     <div class="nav">
-        <div class="nav-title"><div class="sync-dot"></div> 恒丰财务云同步</div>
-        <button class="btn" onclick="document.getElementById('xl').click()" style="padding:10px 18px; font-size:13px;">📂 导入税务 Excel</button>
-        <input type="file" id="xl" hidden onchange="processExcel(this)">
+        <div style="font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;"><div style="width:8px; height:8px; background:var(--success); border-radius:50%"></div> 恒丰财务云</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <input type="date" id="f_start" class="date-input" style="padding:5px" onchange="render()"> 至 
+            <input type="date" id="f_end" class="date-input" style="padding:5px" onchange="render()">
+            <button class="btn" onclick="document.getElementById('xl').click()" style="padding:8px 16px; font-size:13px;">📂 导入 Excel</button>
+            <input type="file" id="xl" hidden onchange="processExcel(this)">
+        </div>
     </div>
 
     <div class="summary-grid">
-        <div class="card"><div class="label">总开票金额</div><div class="val" id="total_i">0.00</div></div>
-        <div class="card"><div class="label">总已回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
-        <div class="card"><div class="label">总待付款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
-    </div>
-
-    <div class="filter-bar">
-        筛选账期：<input type="date" id="f_start" class="date-input" onchange="render()"> 
-        至 <input type="date" id="f_end" class="date-input" onchange="render()">
+        <div class="card"><div style="font-size:12px;color:var(--sub)">总开票金额</div><div class="val" id="total_i">0.00</div></div>
+        <div class="card"><div style="font-size:12px;color:var(--sub)">总已回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
+        <div class="card"><div style="font-size:12px;color:var(--sub)">总欠款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
     </div>
 
     <div class="main">
-        <div class="box" style="flex: 1.1;">
+        <div class="box" style="width: 320px; flex-shrink: 0;">
             <div class="scroll">
                 <table>
-                    <thead>
-                        <tr>
-                            <th style="width:50%">客户名称</th>
-                            <th style="width:25%">已回款</th>
-                            <th style="width:25%; text-align:right;">待付款</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>客户名称</th><th style="text-align:right">待付款</th></tr></thead>
                     <tbody id="list_body"></tbody>
                 </table>
             </div>
         </div>
 
-        <div class="box" style="flex: 1.5;">
-            <div id="tip" style="padding:100px 60px; text-align:center; color:var(--sub); font-size:15px;">
-                <img src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png" width="64" style="opacity:0.2; margin-bottom:20px;"><br>
-                选择客户以查看财务透视图
+        <div class="box" style="flex: 1;">
+            <div id="tip" style="margin:auto; color:var(--sub); text-align:center;">
+                <img src="https://cdn-icons-png.flaticon.com/512/1055/1055644.png" width="48" style="opacity:0.2; margin-bottom:15px;"><br>选择左侧客户开启双向对账
             </div>
-            <div id="detail_ui" style="display:none; flex-direction:column; height:100%;">
+            <div id="detail_ui" class="detail-layout" style="display:none;">
                 <div class="detail-header">
-                    <h2 class="client-name" id="c_name"></h2>
-                    <button class="btn-client-del" onclick="deleteClient()">移除此客户</button>
+                    <h2 id="c_name" style="margin:0; font-size:20px; letter-spacing:-0.5px;"></h2>
+                    <div id="c_summary" style="font-size:13px; font-weight:600;"></div>
+                    <button style="color:var(--sub); background:none; border:1px solid #ddd; padding:5px 10px; border-radius:8px; font-size:11px; cursor:pointer;" onclick="deleteClient()">移除客户</button>
                 </div>
-                <div class="scroll" style="padding:30px;">
-                    <div id="c_summary" style="margin-bottom:30px; display:grid; grid-template-columns: repeat(3, 1fr); gap:15px;"></div>
-                    
-                    <h4 style="font-size:13px; color:var(--sub); margin-bottom:15px;">🧾 发票对账流水</h4>
-                    <table id="inv_table" style="table-layout: auto; margin-bottom:40px;">
-                        <thead><tr><th>号码/日期</th><th>金额</th><th>备注</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                
+                <div class="dual-columns">
+                    <div class="column" style="border-right:0.5px solid #eee;">
+                        <div class="col-header">🧾 发票流水 (同号已自动合并)</div>
+                        <div class="scroll">
+                            <table id="inv_table">
+                                <thead><tr><th style="width:60%">号码/日期</th><th style="text-align:right">金额</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="col-header">💰 回款历史 (可删除错账)</div>
+                        <div class="scroll">
+                            <table id="pay_table">
+                                <thead><tr><th>日期</th><th style="text-align:right">回款金额</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-                    <h4 style="font-size:13px; color:var(--sub); margin-bottom:15px;">💰 历史回款明细</h4>
-                    <table id="pay_table" style="table-layout: auto;">
-                        <thead><tr><th>日期</th><th style="text-align:right;">回款金额</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="input-group">
-                    <div style="font-size:14px; font-weight:600; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
-                        <span style="width:4px; height:14px; background:var(--main); border-radius:2px;"></span> 录入新回款
-                    </div>
-                    <div style="display:flex; gap:12px;">
-                        <input type="number" id="amt" placeholder="金额" class="date-input" style="flex:1; padding:12px;">
-                        <input type="date" id="p_day" class="date-input" style="flex:1; padding:12px;">
-                    </div>
-                    <button class="btn" onclick="savePayment()" style="width:100%; margin-top:10px;">确认提交至云端</button>
+                <div class="input-bar">
+                    <span style="font-size:13px; font-weight:600; color:var(--sub)">新回款：</span>
+                    <input type="number" id="amt" placeholder="金额" class="date-input" style="width:150px">
+                    <input type="date" id="p_day" class="date-input">
+                    <button class="btn" onclick="savePayment()" style="flex:1">提交回款并同步云端</button>
                 </div>
             </div>
         </div>
@@ -171,14 +151,14 @@
     }
 
     async function deletePay(pid) {
-        if(confirm("确定撤销此笔记录？")) { await sb.from('payments').delete().eq('id', pid); await load(); }
+        if(confirm("确定撤销？")) { await sb.from('payments').delete().eq('id', pid); await load(); }
     }
 
     async function deleteClient() {
-        if(confirm("彻底删除此客户及其所有历史数据？")) {
+        if(confirm("确定删除该客户及所有数据？")) {
             await sb.from('invoices').delete().eq('client_id', curCid);
             await sb.from('payments').delete().eq('client_id', curCid);
-            curCid = null; document.getElementById('detail_ui').style.display='none'; document.getElementById('tip').style.display='block';
+            curCid = null; document.getElementById('detail_ui').style.display='none'; document.getElementById('tip').style.display='flex';
             await load();
         }
     }
@@ -190,17 +170,13 @@
         const si = invs.reduce((s,x)=>s+x.amount,0), sp = pays.reduce((s,x)=>s+x.amount,0);
 
         document.getElementById('c_name').innerText = invs[0]?.client_name || "未知客户";
-        document.getElementById('c_summary').innerHTML = `
-            <div style="background:#fff; padding:12px; border-radius:12px; border:0.5px solid #eee"><div class="label">累计开票</div><div style="font-size:16px; font-weight:700">¥${si.toLocaleString()}</div></div>
-            <div style="background:#fff; padding:12px; border-radius:12px; border:0.5px solid #eee"><div class="label">已回款</div><div style="font-size:16px; font-weight:700; color:var(--success)">¥${sp.toLocaleString()}</div></div>
-            <div style="background:#fdf2f2; padding:12px; border-radius:12px; border:0.5px solid #ffcfcf"><div class="label">待付款</div><div style="font-size:16px; font-weight:700; color:var(--danger)">¥${(si-sp).toLocaleString()}</div></div>
-        `;
+        document.getElementById('c_summary').innerHTML = `待付: <span style="color:var(--danger)">¥${(si-sp).toLocaleString()}</span> (开票: ¥${si.toLocaleString()} / 已回: ¥${sp.toLocaleString()})`;
         
         const ib = document.querySelector('#inv_table tbody'); ib.innerHTML = '';
-        invs.forEach(i => ib.innerHTML += `<tr><td><span style="font-weight:600">${i.invoice_num}</span><br><small style="color:var(--sub)">${i.inv_date}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="tag-red">红冲</span>':''} <small style="color:var(--sub)">${i.remark||''}</small></td></tr>`);
+        invs.forEach(i => ib.innerHTML += `<tr><td><span style="font-weight:600; font-size:12px;">${i.invoice_num}</span><br><small style="color:var(--sub)">${i.inv_date} ${i.is_red?'[红冲]':''}</small></td><td style="text-align:right">¥${i.amount.toLocaleString()}</td></tr>`);
         
         const pb = document.querySelector('#pay_table tbody'); pb.innerHTML = '';
-        pays.forEach(p => pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;"><span style="font-weight:700">¥${parseFloat(p.amount).toLocaleString()}</span> <span class="btn-del-record" onclick="deletePay('${p.id}')">×</span></td></tr>`);
+        pays.forEach(p => pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;"><span style="font-weight:700">¥${parseFloat(p.amount).toLocaleString()}</span> <span class="btn-del" onclick="deletePay('${p.id}')">×</span></td></tr>`);
         
         document.querySelectorAll('#list_body tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
     }
@@ -219,7 +195,7 @@
         Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
             const s = sums[cid], bal = s.i - s.p; ti += s.i; tp += s.p;
             const tr = document.createElement('tr'); tr.dataset.id = cid; tr.onclick = () => showDetail(cid);
-            tr.innerHTML = `<td><div style="font-weight:600">${s.n}</div></td><td style="color:var(--success); font-weight:500">¥${s.p.toLocaleString()}</td><td style="text-align:right;"><span class="tag-bal">¥${bal.toLocaleString()}</span></td>`;
+            tr.innerHTML = `<td><div style="font-weight:600; max-width:180px; overflow:hidden; text-overflow:ellipsis;">${s.n}</div></td><td style="text-align:right;"><span class="tag-bal">¥${bal.toLocaleString()}</span></td>`;
             body.appendChild(tr);
         });
         document.getElementById('total_i').innerText = ti.toLocaleString(); document.getElementById('total_p').innerText = tp.toLocaleString(); document.getElementById('total_b').innerText = (ti-tp).toLocaleString();
