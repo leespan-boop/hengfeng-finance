@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>恒丰财务 | 沉浸式云对账</title>
+    <title>恒丰财务 | 账期管控云对账</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -21,65 +21,68 @@
         .card .label { font-size: 12px; color: var(--sub); margin-bottom: 4px; }
         .card .val { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 
+        /* 时间筛选器样式 */
+        .filter-group { display: flex; align-items: center; gap: 8px; background: #f5f5f7; padding: 4px 12px; border-radius: 12px; border: 1px solid #e5e5ea; }
+        .filter-input { border: none; background: transparent; font-size: 13px; font-family: inherit; outline: none; color: var(--text); cursor: pointer; }
+
         /* 列表区域 */
         .main { flex: 1; padding: 0 24px 24px; overflow: hidden; }
         .list-box { background: var(--card); border-radius: 20px; height: 100%; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.04); overflow: hidden; }
         .scroll { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
         
         table { width: 100%; border-collapse: collapse; }
-        th { background: #fafafa; padding: 14px 20px; font-size: 11px; color: var(--sub); text-align: left; position: sticky; top: 0; z-index: 5; text-transform: uppercase; }
+        th { background: #fafafa; padding: 14px 20px; font-size: 11px; color: var(--sub); text-align: left; position: sticky; top: 0; z-index: 5; }
         td { padding: 16px 20px; font-size: 15px; border-bottom: 0.5px solid #f2f2f7; }
         tr:hover td { background: #f9f9fb; cursor: pointer; }
         .tag-bal { background: #fff2f2; color: var(--danger); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; }
 
-        /* 弹出层：毛玻璃蒙版 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.15); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; transition: 0.3s; }
+        /* 弹出层 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.15); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
         .modal-content { background: #fff; width: 100%; max-width: 1000px; height: 90vh; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.2); animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        .modal-header { padding: 24px 30px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; }
-        .close-btn { font-size: 28px; color: var(--sub); cursor: pointer; line-height: 1; }
-        
+        .modal-header { padding: 24px 30px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .dual-view { display: flex; flex: 1; overflow: hidden; background: #eee; gap: 1px; }
         .col { flex: 1; background: #fff; display: flex; flex-direction: column; }
-        .col-title { padding: 15px 25px; font-size: 12px; font-weight: 600; color: var(--sub); background: #fafafa; border-bottom: 0.5px solid #eee; }
-        
-        .footer-action { padding: 20px 30px; background: #fff; border-top: 0.5px solid #eee; display: flex; gap: 15px; }
-        .input-item { border: 1.5px solid #f2f2f7; border-radius: 12px; padding: 12px; font-size: 15px; outline: none; transition: 0.2s; }
-        .input-item:focus { border-color: var(--main); }
-        .btn { background: var(--main); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .btn:active { transform: scale(0.98); }
+        .col-title { padding: 12px 25px; font-size: 11px; font-weight: 600; color: var(--sub); background: #fafafa; border-bottom: 0.5px solid #eee; }
+        .footer-action { padding: 20px 30px; border-top: 0.5px solid #eee; display: flex; gap: 12px; }
+        .input-item { border: 1.5px solid #f2f2f7; border-radius: 12px; padding: 12px; font-size: 14px; outline: none; }
+        .btn { background: var(--main); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; }
 
-        /* 移动端适配 */
         @media (max-width: 768px) {
-            .summary-grid { grid-template-columns: 1fr; }
-            .modal-overlay { padding: 0; }
+            .nav { height: auto; flex-direction: column; padding: 12px; gap: 12px; }
+            .summary-grid { grid-template-columns: 1fr; padding: 10px 12px; }
             .modal-content { height: 100vh; border-radius: 0; }
             .dual-view { flex-direction: column; overflow-y: auto; }
-            .col { height: auto; flex: none; }
             .footer-action { flex-direction: column; }
-            .input-item { width: 100%; }
         }
     </style>
 </head>
 <body>
     <div class="nav">
-        <div class="nav-title"><div style="width:8px; height:8px; background:var(--success); border-radius:50%"></div> 恒丰财务云 7.0</div>
-        <button class="btn" onclick="document.getElementById('xl').click()" style="padding:8px 16px; font-size:13px;">📂 导入 Excel</button>
-        <input type="file" id="xl" hidden onchange="processExcel(this)">
+        <div class="nav-title"><div style="width:8px; height:8px; background:var(--success); border-radius:50%"></div> 恒丰财务云 8.0</div>
+        
+        <div style="display:flex; gap:12px; align-items:center;">
+            <div class="filter-group">
+                <input type="date" id="f_start" class="filter-input" onchange="render()">
+                <span style="color:#d1d1d6; font-size:12px;">至</span>
+                <input type="date" id="f_end" class="filter-input" onchange="render()">
+            </div>
+            <button class="btn" onclick="document.getElementById('xl').click()" style="padding:8px 16px; font-size:13px;">📂 导入 Excel</button>
+            <input type="file" id="xl" hidden onchange="processExcel(this)">
+        </div>
     </div>
 
     <div class="summary-grid">
-        <div class="card"><div class="label">总开票</div><div class="val" id="total_i">0.00</div></div>
-        <div class="card"><div class="label">总回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
-        <div class="card"><div class="label">总欠款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
+        <div class="card"><div class="label">账期内开票</div><div class="val" id="total_i">0.00</div></div>
+        <div class="card"><div class="label">账期内回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
+        <div class="card"><div class="label">实时总欠款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
     </div>
 
     <div class="main">
         <div class="list-box">
             <div class="scroll">
                 <table>
-                    <thead><tr><th style="width:70%">客户名称 (全称)</th><th style="text-align:right">待付总额</th></tr></thead>
+                    <thead><tr><th style="width:70%">客户名称 (全称)</th><th style="text-align:right">账期内待付</th></tr></thead>
                     <tbody id="list_body"></tbody>
                 </table>
             </div>
@@ -90,28 +93,26 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h2 id="c_name" style="margin:0; font-size:20px; color:var(--text);"></h2>
+                    <h2 id="c_name" style="margin:0; font-size:18px;"></h2>
                     <div id="c_summary" style="font-size:12px; color:var(--sub); margin-top:4px;"></div>
                 </div>
-                <div class="close-btn" onclick="closeModal()">×</div>
+                <div style="font-size:24px; color:var(--sub); cursor:pointer;" onclick="closeModal()">×</div>
             </div>
-            
             <div class="dual-view">
                 <div class="col">
-                    <div class="col-title">🧾 发票流水</div>
+                    <div class="col-title">🧾 账期内发票</div>
                     <div class="scroll"><table id="inv_table"><tbody></tbody></table></div>
                 </div>
                 <div class="col">
-                    <div class="col-title">💰 回款历史</div>
+                    <div class="col-title">💰 账期内回款</div>
                     <div class="scroll"><table id="pay_table"><tbody></tbody></table></div>
                 </div>
             </div>
-
             <div class="footer-action">
-                <input type="number" id="amt" placeholder="回款金额" class="input-item" style="flex:1">
+                <input type="number" id="amt" placeholder="新增回款金额" class="input-item" style="flex:1">
                 <input type="date" id="p_day" class="input-item">
                 <button class="btn" onclick="savePayment()">确认提交</button>
-                <button style="background:none; border:none; color:var(--danger); font-size:12px; cursor:pointer;" onclick="deleteClient()">移除客户</button>
+                <button style="background:none; border:none; color:var(--danger); font-size:11px; cursor:pointer;" onclick="deleteClient()">移除客户</button>
             </div>
         </div>
     </div>
@@ -146,53 +147,55 @@
 
     async function savePayment() {
         const a = document.getElementById('amt').value, d = document.getElementById('p_day').value;
-        if(!a || !d || !curCid) return alert('必填');
+        if(!a || !d || !curCid) return alert('请填写完整');
         await sb.from('payments').insert([{ client_id: curCid, client_name: ALL_I.find(x=>x.client_id===curCid).client_name, amount: a, pay_date: d }]);
         document.getElementById('amt').value = ''; await load();
     }
 
     function showModal(cid) {
         curCid = cid; document.getElementById('modal').style.display = 'flex';
-        const invs = ALL_I.filter(x => x.client_id === cid).sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date));
-        const pays = ALL_P.filter(x => x.client_id === cid);
+        const s_d = document.getElementById('f_start').value, e_d = document.getElementById('f_end').value;
+        
+        const invs = ALL_I.filter(x => x.client_id === cid && (!s_d || x.inv_date >= s_d) && (!e_d || x.inv_date <= e_d)).sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date));
+        const pays = ALL_P.filter(x => x.client_id === cid && (!s_d || x.pay_date >= s_d) && (!e_d || x.pay_date <= e_d));
+        
         const si = invs.reduce((s,x)=>s+x.amount,0), sp = pays.reduce((s,x)=>s+x.amount,0);
-
-        document.getElementById('c_name').innerText = invs[0]?.client_name || "未知客户";
-        document.getElementById('c_summary').innerText = `累计开票: ¥${si.toLocaleString()} | 已回款: ¥${sp.toLocaleString()} | 待付余额: ¥${(si-sp).toLocaleString()}`;
+        document.getElementById('c_name').innerText = ALL_I.find(x=>x.client_id===cid).client_name;
+        document.getElementById('c_summary').innerText = `账期内开票: ¥${si.toLocaleString()} | 已回款: ¥${sp.toLocaleString()} | 待付: ¥${(si-sp).toLocaleString()}`;
         
         const ib = document.querySelector('#inv_table tbody'); ib.innerHTML = '';
-        invs.forEach(i => ib.innerHTML += `<tr><td style="font-size:13px"><b>${i.invoice_num}</b><br><small style="color:var(--sub)">${i.inv_date} ${i.is_red?'[红冲]':''}</small></td><td style="text-align:right">¥${i.amount.toLocaleString()}</td></tr>`);
+        invs.forEach(i => ib.innerHTML += `<tr><td><b>${i.invoice_num}</b><br><small>${i.inv_date}</small></td><td style="text-align:right">¥${i.amount.toLocaleString()}</td></tr>`);
         
         const pb = document.querySelector('#pay_table tbody'); pb.innerHTML = '';
-        pays.forEach(p => pb.innerHTML += `<tr><td style="font-size:13px">${p.pay_date}</td><td style="text-align:right"><b>¥${parseFloat(p.amount).toLocaleString()}</b> <span onclick="deletePay('${p.id}')" style="color:var(--sub); margin-left:8px; cursor:pointer">×</span></td></tr>`);
+        pays.forEach(p => pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right"><b>¥${parseFloat(p.amount).toLocaleString()}</b> <span onclick="deletePay('${p.id}')" style="color:#888; cursor:pointer; margin-left:8px;">×</span></td></tr>`);
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; curCid = null; }
-
     async function deletePay(pid) { if(confirm("删除记录？")) { await sb.from('payments').delete().eq('id', pid); await load(); } }
-
-    async function deleteClient() {
-        if(confirm("彻底删除数据？")) {
-            await sb.from('invoices').delete().eq('client_id', curCid);
-            await sb.from('payments').delete().eq('client_id', curCid);
-            closeModal(); await load();
-        }
-    }
+    async function deleteClient() { if(confirm("彻底删除数据？")) { await sb.from('invoices').delete().eq('client_id', curCid); await sb.from('payments').delete().eq('client_id', curCid); closeModal(); await load(); } }
 
     function render() {
-        const body = document.getElementById('list_body');
+        const body = document.getElementById('list_body'), s_d = document.getElementById('f_start').value, e_d = document.getElementById('f_end').value;
         body.innerHTML = ''; let sums = {}, ti = 0, tp = 0;
+
         ALL_I.forEach(i => {
+            if((s_d && i.inv_date < s_d) || (e_d && i.inv_date > e_d)) return;
             if(!sums[i.client_id]) sums[i.client_id] = {n: i.client_name, i: 0, p: 0}; sums[i.client_id].i += i.amount;
         });
-        ALL_P.forEach(p => { if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount); });
+        ALL_P.forEach(p => {
+            if((s_d && p.pay_date < s_d) || (e_d && p.pay_date > e_d)) return;
+            if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount);
+        });
+
         Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
             const s = sums[cid], bal = s.i - s.p; ti += s.i; tp += s.p;
             const tr = document.createElement('tr'); tr.onclick = () => showModal(cid);
-            tr.innerHTML = `<td><div style="font-weight:600; line-height:1.4;">${s.n}</div></td><td style="text-align:right;"><span class="tag-bal">¥${bal.toLocaleString()}</span></td>`;
+            tr.innerHTML = `<td><b>${s.n}</b></td><td style="text-align:right;"><span class="tag-bal">¥${bal.toLocaleString()}</span></td>`;
             body.appendChild(tr);
         });
-        document.getElementById('total_i').innerText = ti.toLocaleString(); document.getElementById('total_p').innerText = tp.toLocaleString(); document.getElementById('total_b').innerText = (ti-tp).toLocaleString();
+        document.getElementById('total_i').innerText = ti.toLocaleString();
+        document.getElementById('total_p').innerText = tp.toLocaleString();
+        document.getElementById('total_b').innerText = (ti-tp).toLocaleString();
     }
     document.getElementById('p_day').valueAsDate = new Date();
     load();
