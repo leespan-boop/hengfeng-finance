@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恒丰财务 | 全云同步系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --main: #007aff; --success: #34c759; --danger: #ff3b30; --bg: #f5f5f7; --card: #ffffff; }
+        body { font-family: -apple-system, "SF Pro Display", sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* 导航栏 */
+        .nav { height: 60px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 0.5px solid #d1d1d6; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; }
+        .nav-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .sync-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
+
+        /* 汇总卡片 */
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 24px; flex-shrink: 0; }
+        .card { background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .label { font-size: 13px; color: #86868b; margin-bottom: 8px; font-weight: 500; }
+        .val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+
+        /* 时间筛选器 */
+        .filter-bar { padding: 0 24px 15px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: #86868b; }
+        .date-input { border: 1px solid #d1d1d6; border-radius: 8px; padding: 4px 8px; font-size: 13px; }
+
+        /* 主内容区 */
+        .main { flex: 1; display: flex; gap: 20px; padding: 0 24px 24px; overflow: hidden; }
+        .box { background: var(--card); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .scroll { overflow-y: auto; flex: 1; scroll-behavior: smooth; }
+        
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; padding: 12px; font-size: 11px; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; text-align: left; }
+        td { padding: 14px 12px; font-size: 14px; border-bottom: 0.5px solid #f2f2f7; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f9f9fb; cursor: pointer; }
+        .active-row td { background: #f2f8ff !important; color: var(--main); font-weight: 600; }
+
+        /* 红冲标签 */
+        .tag-red { background: #fff2f2; color: var(--danger); font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 0.5px solid #ffcfcf; font-weight: 600; }
+        
+        /* 右侧详情 */
+        .detail-ui { display: flex; flex-direction: column; height: 100%; }
+        .detail-header { padding: 24px; border-bottom: 0.5px solid #eee; }
+        .detail-body { padding: 24px; }
+        .input-group { background: #f9f9fb; padding: 20px; border-radius: 16px; margin: 20px; border: 0.5px solid #e5e5ea; }
+        
+        /* 按钮与输入 */
+        input[type="number"], input[type="date"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; margin-bottom: 12px; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--main); box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+        .btn { background: var(--main); color: #fff; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-ghost { background: transparent; color: var(--main); border: 1px solid var(--main); padding: 8px 16px; font-size: 13px; }
+
+        @media (max-width: 900px) { .main { flex-direction: column; overflow-y: auto; } .summary-grid { grid-template-columns: 1fr; } .main { height: auto; } }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <div class="nav-title"><div class="sync-dot"></div> 恒丰财务云同步</div>
+        <button class="btn" onclick="document.getElementById('xl').click()" style="padding:8px 16px; font-size:13px;">📂 导入税务 Excel</button>
+        <input type="file" id="xl" hidden onchange="processExcel(this)">
+    </div>
+
+    <div class="summary-grid">
+        <div class="card"><div class="label">总开票金额</div><div class="val" id="total_i">0.00</div></div>
+        <div class="card"><div class="label">总已回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
+        <div class="card"><div class="label">总待付款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
+    </div>
+
+    <div class="filter-bar">
+        日期筛选：
+        <input type="date" id="f_start" class="date-input" onchange="load()"> 至 
+        <input type="date" id="f_end" class="date-input" onchange="load()">
+        <button class="btn-ghost" onclick="resetFilter()" style="border-radius:6px; padding:2px 8px;">重置</button>
+    </div>
+
+    <div class="main">
+        <div class="box" style="flex: 1.3;">
+            <div class="scroll">
+                <table>
+                    <thead><tr><th>客户名称</th><th>识别号</th><th>开票总额</th><th style="text-align:right;">待付款</th></tr></thead>
+                    <tbody id="list_body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="box" style="flex: 1;">
+            <div id="tip" style="padding:60px; text-align:center; color:#86868b; font-size:15px;">点击左侧客户查看明细</div>
+            <div id="detail_ui" class="detail-ui" style="display:none;">
+                <div class="detail-header">
+                    <div id="c_id" style="font-size:11px; color:#86868b; margin-bottom:4px;"></div>
+                    <h2 id="c_name" style="margin:0; font-size:22px; letter-spacing:-0.5px;"></h2>
+                </div>
+                <div class="scroll detail-body">
+                    <h4 style="font-size:13px; color:#86868b; margin:0 0 12px 0;">🧾 发票流水 (同号自动合并)</h4>
+                    <table style="margin-bottom:30px;">
+                        <thead><tr><th>发票号码/日期</th><th>金额</th><th>备注</th></tr></thead>
+                        <tbody id="inv_detail"></tbody>
+                    </table>
+                    <h4 style="font-size:13px; color:#86868b; margin:0 0 12px 0;">💰 回款历史</h4>
+                    <table>
+                        <thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead>
+                        <tbody id="pay_detail"></tbody>
+                    </table>
+                </div>
+                <div class="input-group">
+                    <div style="font-size:13px; font-weight:600; margin-bottom:12px;">录入新回款：</div>
+                    <input type="number" id="amt" placeholder="回款金额">
+                    <input type="date" id="p_day">
+                    <button class="btn" onclick="savePayment()" style="width:100%;">确认提交云端</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const S_URL = "https://vjelnswcmypvypegqxrb.supabase.co";
+    const S_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
+    const sb = supabase.createClient(S_URL, S_KEY);
+
+    let ALL_I = [], ALL_P = [], curCid = null;
+
+    // 1. 初始化加载与全端同步
+    async function load() {
+        const { data: i } = await sb.from('invoices').select('*');
+        const { data: p } = await sb.from('payments').select('*').order('pay_date', {ascending: false});
+        ALL_I = i || []; ALL_P = p || [];
+        render();
+        if(curCid) showDetail(curCid);
+    }
+
+    // 2. 智能 Excel 处理：合并同号发票、识别红冲
+    async function processExcel(obj) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const data = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type:'array'}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type:'array'}).SheetNames[0]]);
+            
+            // 核心逻辑：按发票号码合并金额
+            const merged = {};
+            data.forEach(r => {
+                const num = r['数电票号码'] || r['数电发票号码'] || r['发票号码'];
+                const cid = r['购方识别号'] || r['购买方识别号'] || r['纳税人识别号'];
+                const cname = r['购买方名称'] || r['购方名称'] || r['客户名称'];
+                const amt = parseFloat(r['价税合计'] || r['金额'] || 0);
+                
+                if(!num || !cid) return;
+
+                if(!merged[num]) {
+                    merged[num] = {
+                        invoice_num: String(num),
+                        client_id: String(cid),
+                        client_name: String(cname),
+                        amount: 0,
+                        inv_date: r['开票日期'] || r['日期'],
+                        is_red: false,
+                        remark: r['备注'] || ""
+                    };
+                }
+                merged[num].amount += amt; // 同号相加
+                if(amt < 0) merged[num].is_red = true; // 识别红冲
+            });
+
+            const uploadData = Object.values(merged);
+            if(uploadData.length > 0) {
+                const { error } = await sb.from('invoices').upsert(uploadData);
+                if(!error) { alert(`同步完成！已智能合并并上传 ${uploadData.length} 张发票。`); load(); }
+                else alert("同步失败: " + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(obj.files[0]);
+    }
+
+    // 3. 记录回款
+    async function savePayment() {
+        const a = document.getElementById('amt').value, d = document.getElementById('p_day').value;
+        if(!a || !d || !curCid) return alert('信息不完整');
+        const name = ALL_I.find(x => x.client_id === curCid).client_name;
+        const { error } = await sb.from('payments').insert([{ client_id: curCid, client_name: name, amount: a, pay_date: d }]);
+        if(!error) { document.getElementById('amt').value = ''; load(); }
+    }
+
+    // 4. 展示详情
+    function showDetail(cid) {
+        curCid = cid;
+        document.getElementById('tip').style.display='none';
+        document.getElementById('detail_ui').style.display='flex';
+        
+        const invs = ALL_I.filter(x => x.client_id === cid);
+        const pays = ALL_P.filter(x => x.client_id === cid);
+        const s_i = invs.reduce((s,x)=>s+x.amount,0), s_p = pays.reduce((s,x)=>s+x.amount,0);
+
+        document.getElementById('c_name').innerText = invs[0].client_name;
+        document.getElementById('c_id').innerText = "识别号: " + cid;
+        document.getElementById('c_summary').innerHTML = `开票: ¥${s_i.toLocaleString()} | 已回: ¥${s_p.toLocaleString()} | 待付: <b style="color:var(--danger)">¥${(s_i-s_p).toLocaleString()}</b>`;
+
+        const ib = document.getElementById('inv_detail'); ib.innerHTML = '';
+        invs.sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date)).forEach(i => {
+            ib.innerHTML += `<tr><td><b>${i.invoice_num}</b><br><small style="color:#999">${i.inv_date}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="tag-red">红冲</span>':''} <small style="color:#86868b">${i.remark||''}</small></td></tr>`;
+        });
+
+        const pb = document.getElementById('pay_detail'); pb.innerHTML = '';
+        pays.forEach(p => { pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right; font-weight:600;">${parseFloat(p.amount).toLocaleString()}</td></tr>`; });
+        
+        document.querySelectorAll('#list_body tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
+    }
+
+    // 5. 渲染列表与筛选
+    function render() {
+        const body = document.getElementById('list_body'); body.innerHTML = '';
+        const start = document.getElementById('f_start').value, end = document.getElementById('f_end').value;
+        
+        let sums = {}, ti = 0, tp = 0;
+        
+        // 筛选逻辑
+        ALL_I.forEach(i => {
+            if(start && i.inv_date < start) return;
+            if(end && i.inv_date > end) return;
+            if(!sums[i.client_id]) sums[i.client_id] = {n: i.client_name, i: 0, p: 0};
+            sums[i.client_id].i += i.amount;
+        });
+        ALL_P.forEach(p => {
+            if(start && p.pay_date < start) return;
+            if(end && p.pay_date > end) return;
+            if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount);
+        });
+
+        const sorted = Object.keys(sums).sort((a,b) => (sums[b].i - sums[b].p) - (sums[a].i - sums[a].p));
+        sorted.forEach(cid => {
+            const s = sums[cid], bal = s.i - s.p;
+            ti += s.i; tp += s.p;
+            const tr = document.createElement('tr'); tr.dataset.id = cid;
+            tr.onclick = () => showDetail(cid);
+            tr.innerHTML = `<td><b>${s.n}</b></td><td style="color:#86868b; font-size:11px;">${cid}</td><td>${s.i.toLocaleString()}</td><td style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#1d1d1f'}">${bal.toLocaleString()}</td>`;
+            body.appendChild(tr);
+        });
+
+        document.getElementById('total_i').innerText = ti.toLocaleString();
+        document.getElementById('total_p').innerText = tp.toLocaleString();
+        document.getElementById('total_b').innerText = (ti - tp).toLocaleString();
+    }
+
+    function resetFilter() { document.getElementById('f_start').value = ''; document.getElementById('f_end').value = ''; load(); }
+    
+    document.getElementById('p_day').valueAsDate = new Date();
+    load();
+    setInterval(load, 15000); // 15秒自动同步全端数据
+</script>
+</body>
+</html>
