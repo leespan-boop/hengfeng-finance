@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务 - 全云同步正式版</title>
+    <title>恒丰财务 - 兼容加强版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -31,8 +31,8 @@
 </head>
 <body>
     <div class="nav">
-        <div style="font-weight:700;">恒丰财务 <span id="sync_st" style="color:var(--success); font-size:10px;">●</span></div>
-        <button onclick="document.getElementById('file').click()" style="width:auto; margin:0; padding:6px 12px; font-size:12px;">📂 导入并同步全端</button>
+        <div style="font-weight:700;">恒丰财务 <span id="sync_st" style="color:var(--success); font-size:10px;">● 云同步已连接</span></div>
+        <button onclick="document.getElementById('file').click()" style="width:auto; margin:0; padding:6px 12px; font-size:12px;">📂 导入 Excel</button>
         <input type="file" id="file" hidden onchange="syncExcel(this)">
     </div>
 
@@ -54,7 +54,7 @@
         <div class="box detail-side">
             <div id="tip" style="padding:40px; text-align:center; color:#ccc;">点击左侧客户查看详情</div>
             <div id="detail_ui" style="display:none; flex-direction:column; height:100%;">
-                <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;">
+                <div style="padding:15px; border-bottom:1px solid #eee;">
                     <h3 id="c_name" style="margin:0 0 5px 0; color:var(--main);"></h3>
                     <div id="c_summary" style="font-size:12px; color:#666;"></div>
                 </div>
@@ -87,8 +87,9 @@
     let ALL_I = [], ALL_P = [], curId = null;
 
     async function load() {
-        const { data: i } = await sb.from('invoices').select('*');
-        const { data: p } = await sb.from('payments').select('*').order('pay_date', {ascending: false});
+        const { data: i, error: e1 } = await sb.from('invoices').select('*');
+        const { data: p, error: e2 } = await sb.from('payments').select('*').order('pay_date', {ascending: false});
+        if(e1 || e2) console.error("读取失败", e1, e2);
         ALL_I = i || []; ALL_P = p || [];
         render(); if(curId) show(curId);
     }
@@ -96,30 +97,50 @@
     async function syncExcel(obj) {
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const data = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type:'array'}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type:'array'}).SheetNames[0]]);
-            const up = data.map(r => ({
-                invoice_num: String(r['数电票号码'] || r['数电发票号码'] || ""),
-                client_id: String(r['购方识别号'] || r['购买方识别号'] || ""),
-                client_name: r['购买方名称'] || r['购方名称'],
-                amount: parseFloat(r['价税合计'] || 0),
-                inv_date: r['开票日期'],
-                is_red: parseFloat(r['价税合计']) < 0,
-                remark: r['备注'] || ""
-            })).filter(x => x.invoice_num && x.client_id);
-            await sb.from('invoices').upsert(up);
-            alert("同步成功！已搬运到云端");
-            load();
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            if(data.length === 0) return alert("Excel 里面没有数据！");
+
+            const up = data.map(r => {
+                // 自动匹配多种可能的表头名称
+                const f_id = r['数电票号码'] || r['数电发票号码'] || r['发票号码'] || r['发票代码'];
+                const c_id = r['购方识别号'] || r['购买方识别号'] || r['纳税人识别号'];
+                const c_name = r['购买方名称'] || r['购方名称'] || r['客户名称'];
+                const amt = r['价税合计'] || r['金额'] || r['合计金额'];
+                const date = r['开票日期'] || r['日期'];
+                
+                if(!f_id || !c_id) return null;
+
+                return {
+                    invoice_num: String(f_id),
+                    client_id: String(c_id),
+                    client_name: String(c_name),
+                    amount: parseFloat(amt || 0),
+                    inv_date: date,
+                    is_red: parseFloat(amt || 0) < 0,
+                    remark: r['备注'] || ""
+                };
+            }).filter(x => x !== null);
+
+            if(up.length === 0) return alert("无法识别 Excel 表头！请检查是否包含：数电票号码、购方识别号、购买方名称、价税合计");
+
+            const { error } = await sb.from('invoices').upsert(up);
+            if(error) alert("同步到云端失败：" + error.message);
+            else {
+                alert(`同步成功！已成功搬运 ${up.length} 条数据到云端`);
+                await load();
+            }
         };
         reader.readAsArrayBuffer(obj.files[0]);
     }
 
     async function addPay() {
         const a = document.getElementById('amt').value, d = document.getElementById('day').value;
-        if(!a || !d || !curId) return alert('请填全');
-        const c_name = ALL_I.find(x => x.client_id === curId).client_name;
-        await sb.from('payments').insert([{ client_id: curId, client_name: c_name, amount: a, pay_date: d }]);
+        if(!a || !d || !curId) return alert('请填全金额和日期');
+        const c_info = ALL_I.find(x => x.client_id === curId);
+        await sb.from('payments').insert([{ client_id: curId, client_name: c_info.client_name, amount: a, pay_date: d }]);
         document.getElementById('amt').value = '';
-        load();
+        await load();
     }
 
     function show(cid) {
@@ -133,7 +154,7 @@
 
         const ib = document.getElementById('inv_detail'); ib.innerHTML = '';
         invs.sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date)).forEach(i => {
-            ib.innerHTML += `<tr><td>${i.invoice_num}<br><small style="color:#999">${i.inv_date}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="red-tag">红冲</span>':''} <small style="font-size:10px">${i.remark}</small></td></tr>`;
+            ib.innerHTML += `<tr><td>${i.invoice_num}<br><small style="color:#999">${i.inv_date || ''}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="red-tag">红冲</span>':''} <small style="font-size:10px">${i.remark||''}</small></td></tr>`;
         });
 
         const pb = document.getElementById('pay_detail'); pb.innerHTML = '';
@@ -147,7 +168,8 @@
         ALL_I.forEach(i => { if(!sums[i.client_id]) sums[i.client_id] = {n:i.client_name, i:0, p:0}; sums[i.client_id].i += i.amount; });
         ALL_P.forEach(p => { if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount); });
 
-        Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
+        const sorted = Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p));
+        sorted.forEach(cid => {
             const s = sums[cid], bal = s.i - s.p; ti += s.i; tp += s.p;
             const tr = document.createElement('tr'); tr.dataset.id = cid;
             tr.onclick = () => show(cid);
@@ -160,7 +182,7 @@
     }
 
     document.getElementById('day').valueAsDate = new Date();
-    load(); setInterval(load, 10000);
+    load(); setInterval(load, 15000); // 15秒刷一次
 </script>
 </body>
 </html>
