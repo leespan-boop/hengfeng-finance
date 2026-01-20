@@ -3,190 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务 - 云端同步旗舰版</title>
+    <title>恒丰财务 - 客户详情同步版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --accent: #007aff; --bg: #f5f5f7; --card: #ffffff; --text-main: #1d1d1f; --text-sec: #86868b; --success: #34c759; --danger: #ff3b30; }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .nav { height: 60px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 0.5px solid #ddd; z-index: 100; }
+        .nav { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 0.5px solid #ddd; }
         .view { flex: 1; display: flex; padding: 20px; gap: 20px; overflow: hidden; }
-        .card { background: #fff; padding: 20px; border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-        .apple-btn { background: var(--accent); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .apple-btn:active { opacity: 0.7; }
-        .apple-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin-top: 8px; font-size: 16px; -webkit-appearance: none; }
+        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .stat-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .stat-item { flex:1; padding:10px; border-radius:8px; background:#f9f9fb; font-size:12px; }
+        .stat-val { font-size:18px; font-weight:700; margin-top:5px; }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 12px; color: var(--text-sec); border-bottom: 1px solid #eee; padding: 12px; }
-        td { padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
-        @media (max-width: 768px) { .view { flex-direction: column; overflow-y: auto; } .stat-grid { grid-template-columns: 1fr; } .view { padding: 10px; } }
+        th { text-align: left; font-size: 12px; color: var(--text-sec); border-bottom: 1px solid #eee; padding: 10px; position: sticky; top: 0; background: #fff; }
+        td { padding: 10px; border-bottom: 1px solid #f9f9f9; font-size: 14px; cursor: pointer; }
+        tr:hover td { background: #f5faff; }
+        .apple-btn { background: var(--accent); color: #fff; border: none; padding: 8px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .apple-input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-top: 5px; margin-bottom: 10px; }
+        .active-row td { background: #e1f0ff !important; font-weight: 600; }
+        @media (max-width: 768px) { .view { flex-direction: column; overflow-y: auto; } .card { flex: none; } }
     </style>
 </head>
 <body>
 
 <div class="nav">
-    <div style="font-weight: 700;">恒丰财务 <span style="font-weight:400; color:var(--text-sec)">Cloud</span></div>
-    <button class="apple-btn" style="background:#f2f2f7; color:#333;" onclick="document.getElementById('tax_file').click()">📂 导入税务Excel</button>
+    <div style="font-weight: 700; font-size:18px;">恒丰财务管理系统</div>
+    <button class="apple-btn" style="background:#f2f2f7; color:#333;" onclick="document.getElementById('tax_file').click()">📂 导入发票Excel</button>
     <input type="file" id="tax_file" hidden onchange="handleTaxImport(this)">
 </div>
 
 <div class="view">
-    <div style="flex: 1.5; display: flex; flex-direction: column; overflow: hidden;">
-        <div class="stat-grid">
-            <div class="card"><div>总开票</div><div id="v_i" style="font-size:22px; font-weight:700;">0.00</div></div>
-            <div class="card"><div>已回款</div><div id="v_p" style="font-size:22px; font-weight:700; color:var(--success)">0.00</div></div>
-            <div class="card"><div>待回收</div><div id="v_b" style="font-size:22px; font-weight:700; color:var(--danger)">0.00</div></div>
+    <div class="card" style="flex: 1.2;">
+        <div style="font-weight:700; margin-bottom:15px; display:flex; justify-content:space-between;">
+            <span>客户欠款排行</span>
+            <span id="sync_status" style="font-size:12px; color:var(--success); font-weight:400;">● 云端已连接</span>
         </div>
-        <div class="card" style="flex:1; overflow-y:auto;">
-            <table><thead><tr><th>客户名称</th><th style="text-align:right;">应收余额</th></tr></thead><tbody id="c_body"></tbody></table>
+        <div class="stat-bar">
+            <div class="stat-item">总开票<div class="stat-val" id="total_i">0.00</div></div>
+            <div class="stat-item">总回款<div class="stat-val" id="total_p" style="color:var(--success)">0.00</div></div>
+            <div class="stat-item">总欠款<div class="stat-val" id="total_b" style="color:var(--danger)">0.00</div></div>
+        </div>
+        <div style="overflow-y:auto; flex:1;">
+            <table>
+                <thead><tr><th>客户名称</th><th>开票额</th><th>已付</th><th style="text-align:right;">待付</th></tr></thead>
+                <tbody id="main_body"></tbody>
+            </table>
         </div>
     </div>
-    
-    <div style="flex: 0.8; display: flex; flex-direction: column; gap: 20px;">
-        <div class="card">
-            <div style="font-weight:700; margin-bottom:15px;">快捷录入回款</div>
-            <label style="font-size:12px; color:var(--text-sec)">选择客户</label>
-            <select id="p_cli" class="apple-input"></select>
-            
-            <label style="font-size:12px; color:var(--text-sec); margin-top:10px; display:block;">金额</label>
-            <input type="number" id="p_amt" class="apple-input" placeholder="输入回款金额">
-            
-            <label style="font-size:12px; color:var(--text-sec); margin-top:10px; display:block;">日期</label>
+
+    <div class="card" style="flex: 0.8;">
+        <div id="detail_title" style="font-weight:700; margin-bottom:15px; color:var(--accent)">请选择左侧客户查看详情</div>
+        
+        <div id="input_area" style="display:none; background:#f5faff; padding:15px; border-radius:10px; margin-bottom:20px;">
+            <div style="font-size:13px; font-weight:600; margin-bottom:10px;">快速录入该客户回款：</div>
+            <input type="number" id="p_amt" class="apple-input" placeholder="回款金额">
             <input type="date" id="p_day" class="apple-input">
-            
-            <button class="apple-btn" style="width:100%; margin-top:20px; height:50px; font-size:16px;" id="btn_save" onclick="addPay()">确认记账</button>
+            <button class="apple-btn" style="width:100%" id="btn_save" onclick="addPay()">确认记账并同步</button>
+        </div>
+
+        <div style="font-weight:600; font-size:13px; margin-bottom:10px;">回款历史明细：</div>
+        <div style="overflow-y:auto; flex:1;">
+            <table>
+                <thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead>
+                <tbody id="detail_body"></tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
-    // 自动填入的配置信息
     const SUPABASE_URL = "https://vjelnswcmypvypegqxrb.supabase.co"; 
     const SUPABASE_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
-    
-    // 初始化 Supabase 客户端
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let INVOICES = JSON.parse(localStorage.getItem('HF_INV')) || [];
     let CLIS = JSON.parse(localStorage.getItem('HF_CLIS')) || {};
     let PAYMENTS = [];
+    let CURRENT_TID = null;
 
-    // 从云端获取回款数据
+    // --- 核心：解决不更新的问题 ---
+    // 监听云端数据变化，一旦有变动立刻刷新界面
+    _supabase.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
+        fetchPayments();
+    }).subscribe();
+
     async function fetchPayments() {
-        const { data, error } = await _supabase.from('payments').select('*');
+        document.getElementById('sync_status').innerText = "○ 同步中...";
+        const { data, error } = await _supabase.from('payments').select('*').order('pay_date', { ascending: false });
         if (!error) {
             PAYMENTS = data;
             render();
+            if (CURRENT_TID) showDetail(CURRENT_TID);
+            document.getElementById('sync_status').innerText = "● 云端已同步";
         }
     }
 
-    // 录入回款并上传云端
     async function addPay() {
-        const btn = document.getElementById('btn_save');
-        const tid = document.getElementById('p_cli').value;
         const amt = parseFloat(document.getElementById('p_amt').value);
         const day = document.getElementById('p_day').value;
-        
-        if (!tid || isNaN(amt) || !day) { alert('请检查输入内容'); return; }
+        if (!CURRENT_TID || isNaN(amt) || !day) return alert('请填全信息');
 
-        btn.disabled = true; 
-        btn.innerText = '正在云端同步...';
+        const btn = document.getElementById('btn_save');
+        btn.disabled = true; btn.innerText = '同步中...';
 
         const { error } = await _supabase.from('payments').insert([
-            { client_name: CLIS[tid], amount: amt, pay_date: day, client_id: tid }
+            { client_name: CLIS[CURRENT_TID], amount: amt, pay_date: day, client_id: CURRENT_TID }
         ]);
         
-        if (error) {
-            alert('同步失败: ' + error.message);
-        } else {
-            document.getElementById('p_amt').value = '';
-            await fetchPayments();
-            alert('记账成功！手机/电脑已同步');
-        }
-        btn.disabled = false; 
-        btn.innerText = '确认记账';
+        if (error) { alert('失败:' + error.message); } 
+        else { document.getElementById('p_amt').value = ''; }
+        btn.disabled = false; btn.innerText = '确认记账并同步';
     }
 
-    // 处理 Excel 导入 (本地存储，保护隐私)
     function handleTaxImport(input) {
-        const file = input.files[0];
         const reader = new FileReader();
         reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(firstSheet);
-            
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             json.forEach(row => {
                 const invId = String(row['数电票号码'] || row['数电发票号码'] || "");
-                const buyerId = String(row['购方识别号'] || row['购买方识别号'] || "");
-                const buyerName = row['购买方名称'] || row['购方名称'];
-                const amount = parseFloat(row['价税合计'] || 0);
-
-                if (invId && buyerId) {
-                    CLIS[buyerId] = buyerName;
+                const tid = String(row['购方识别号'] || row['购买方识别号'] || "");
+                if (invId && tid) {
+                    CLIS[tid] = row['购买方名称'] || row['购方名称'];
                     if (!INVOICES.find(x => x.id === invId)) {
-                        INVOICES.push({ id: invId, tid: buyerId, amt: amount, date: row['开票日期'] });
+                        INVOICES.push({ id: invId, tid: tid, amt: parseFloat(row['价税合计'] || 0) });
                     }
                 }
             });
             localStorage.setItem('HF_INV', JSON.stringify(INVOICES));
             localStorage.setItem('HF_CLIS', JSON.stringify(CLIS));
             render();
-            alert('发票导入成功！');
+            alert('导入成功');
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(input.files[0]);
     }
 
-    // 渲染界面
-    function render() {
-        const tbody = document.getElementById('c_body');
-        const select = document.getElementById('p_cli');
-        tbody.innerHTML = '';
-        select.innerHTML = '<option value="">-- 请选择客户 --</option>';
+    function showDetail(tid) {
+        CURRENT_TID = tid;
+        document.getElementById('detail_title').innerText = "当前客户：" + CLIS[tid];
+        document.getElementById('input_area').style.display = 'block';
         
-        let clientSums = {};
-        // 算开票总额
-        INVOICES.forEach(inv => {
-            if (!clientSums[inv.tid]) clientSums[inv.tid] = { i: 0, p: 0 };
-            clientSums[inv.tid].i += inv.amt;
-        });
-        // 算回款总额
-        PAYMENTS.forEach(pay => {
-            const tid = Object.keys(CLIS).find(key => CLIS[key] === pay.client_name);
-            if (tid && clientSums[tid]) {
-                clientSums[tid].p += pay.amount;
-            }
-        });
-
-        let totalInvoice = 0, totalPaid = 0;
+        const dBody = document.getElementById('detail_body');
+        dBody.innerHTML = '';
         
-        // 填充表格和下拉框
-        Object.keys(clientSums).sort((a,b) => (clientSums[b].i - clientSums[b].p) - (clientSums[a].i - clientSums[a].p)).forEach(tid => {
-            const balance = clientSums[tid].i - clientSums[tid].p;
-            totalInvoice += clientSums[tid].i;
-            totalPaid += clientSums[tid].p;
-
+        const filtered = PAYMENTS.filter(p => p.client_id === tid || p.client_name === CLIS[tid]);
+        filtered.forEach(p => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${CLIS[tid]}</td><td style="text-align:right; font-weight:700;">${balance.toFixed(2)}</td>`;
-            tbody.appendChild(tr);
-
-            const opt = document.createElement('option');
-            opt.value = tid;
-            opt.text = CLIS[tid];
-            select.add(opt);
+            tr.innerHTML = `<td>${p.pay_date}</td><td style="text-align:right;">${parseFloat(p.amount).toLocaleString()}</td>`;
+            dBody.appendChild(tr);
         });
 
-        document.getElementById('v_i').innerText = totalInvoice.toLocaleString(undefined, {minimumFractionDigits: 2});
-        document.getElementById('v_p').innerText = totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2});
-        document.getElementById('v_b').innerText = (totalInvoice - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2});
+        // 高亮左侧行
+        document.querySelectorAll('#main_body tr').forEach(tr => tr.classList.remove('active-row'));
+        const activeTr = document.querySelector(`tr[data-tid="${tid}"]`);
+        if (activeTr) activeTr.classList.add('active-row');
     }
 
-    // 初始化日期
+    function render() {
+        const mBody = document.getElementById('main_body');
+        mBody.innerHTML = '';
+        let sums = {};
+        INVOICES.forEach(i => {
+            if (!sums[i.tid]) sums[i.tid] = { i: 0, p: 0 };
+            sums[i.tid].i += i.amt;
+        });
+        PAYMENTS.forEach(p => {
+            const tid = Object.keys(CLIS).find(k => CLIS[k] === p.client_name) || p.client_id;
+            if (tid && sums[tid]) sums[tid].p += parseFloat(p.amount);
+        });
+
+        let tI = 0, tP = 0;
+        Object.keys(sums).sort((a,b) => (sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(tid => {
+            const bal = sums[tid].i - sums[tid].p;
+            tI += sums[tid].i; tP += sums[tid].p;
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-tid', tid);
+            tr.onclick = () => showDetail(tid);
+            tr.innerHTML = `<td>${CLIS[tid]}</td><td>${sums[tid].i.toLocaleString()}</td><td>${sums[tid].p.toLocaleString()}</td><td style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#333'}">${bal.toLocaleString()}</td>`;
+            mBody.appendChild(tr);
+        });
+
+        document.getElementById('total_i').innerText = tI.toLocaleString();
+        document.getElementById('total_p').innerText = tP.toLocaleString();
+        document.getElementById('total_b').innerText = (tI - tP).toLocaleString();
+    }
+
     document.getElementById('p_day').valueAsDate = new Date();
-    // 启动即同步云端
     fetchPayments();
+    // 每 5 秒强制拉取一次，确保手机端绝对更新
+    setInterval(fetchPayments, 5000);
 </script>
 </body>
 </html>
