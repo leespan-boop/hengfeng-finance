@@ -3,199 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务 - 客户详情同步版</title>
+    <title>恒丰财务旗舰版 - 全云同步</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --accent: #007aff; --bg: #f5f5f7; --card: #ffffff; --text-main: #1d1d1f; --text-sec: #86868b; --success: #34c759; --danger: #ff3b30; }
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .nav { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 0.5px solid #ddd; }
-        .view { flex: 1; display: flex; padding: 20px; gap: 20px; overflow: hidden; }
-        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-        .stat-bar { display: flex; gap: 10px; margin-bottom: 15px; }
-        .stat-item { flex:1; padding:10px; border-radius:8px; background:#f9f9fb; font-size:12px; }
-        .stat-val { font-size:18px; font-weight:700; margin-top:5px; }
+        :root { --main: #007aff; --success: #34c759; --warning: #ff9500; --danger: #ff3b30; --bg: #f5f5f7; }
+        body { font-family: -apple-system, "SF Pro Text", sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; }
+        .nav { height: 64px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 0.5px solid #d1d1d6; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 100; }
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px; }
+        .summary-card { background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .summary-label { font-size: 13px; color: #86868b; margin-bottom: 8px; }
+        .summary-val { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        .container { display: flex; gap: 20px; padding: 0 20px 20px; height: calc(100vh - 200px); }
+        .box { background: #fff; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .list-box { flex: 1.4; } .detail-box { flex: 1; border-left: 0.5px solid #eee; }
+        .scroll { overflow-y: auto; flex: 1; }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 12px; color: var(--text-sec); border-bottom: 1px solid #eee; padding: 10px; position: sticky; top: 0; background: #fff; }
-        td { padding: 10px; border-bottom: 1px solid #f9f9f9; font-size: 14px; cursor: pointer; }
-        tr:hover td { background: #f5faff; }
-        .apple-btn { background: var(--accent); color: #fff; border: none; padding: 8px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .apple-input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-top: 5px; margin-bottom: 10px; }
-        .active-row td { background: #e1f0ff !important; font-weight: 600; }
-        @media (max-width: 768px) { .view { flex-direction: column; overflow-y: auto; } .card { flex: none; } }
+        th { background: #fafafa; padding: 12px; font-size: 12px; color: #86868b; text-align: left; position: sticky; top: 0; }
+        td { padding: 14px 12px; font-size: 14px; border-bottom: 0.5px solid #f2f2f7; cursor: pointer; }
+        tr:hover td { background: #f9f9fb; }
+        .active-row td { background: #f2f8ff !important; font-weight: 600; color: var(--main); }
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .tag-red { background: #fff2f2; color: var(--danger); border: 0.5px solid #ffcfcf; }
+        .input-group { background: #f9f9fb; padding: 16px; border-radius: 12px; margin: 12px; }
+        input, button { border-radius: 10px; border: 1px solid #ddd; padding: 12px; font-size: 14px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        button { background: var(--main); color: #fff; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        @media (max-width: 768px) { .container { flex-direction: column; height: auto; } .summary-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
-<div class="nav">
-    <div style="font-weight: 700; font-size:18px;">恒丰财务管理系统</div>
-    <button class="apple-btn" style="background:#f2f2f7; color:#333;" onclick="document.getElementById('tax_file').click()">📂 导入发票Excel</button>
-    <input type="file" id="tax_file" hidden onchange="handleTaxImport(this)">
-</div>
-
-<div class="view">
-    <div class="card" style="flex: 1.2;">
-        <div style="font-weight:700; margin-bottom:15px; display:flex; justify-content:space-between;">
-            <span>客户欠款排行</span>
-            <span id="sync_status" style="font-size:12px; color:var(--success); font-weight:400;">● 云端已连接</span>
-        </div>
-        <div class="stat-bar">
-            <div class="stat-item">总开票<div class="stat-val" id="total_i">0.00</div></div>
-            <div class="stat-item">总回款<div class="stat-val" id="total_p" style="color:var(--success)">0.00</div></div>
-            <div class="stat-item">总欠款<div class="stat-val" id="total_b" style="color:var(--danger)">0.00</div></div>
-        </div>
-        <div style="overflow-y:auto; flex:1;">
-            <table>
-                <thead><tr><th>客户名称</th><th>开票额</th><th>已付</th><th style="text-align:right;">待付</th></tr></thead>
-                <tbody id="main_body"></tbody>
-            </table>
-        </div>
+    <div class="nav">
+        <div style="font-size:18px; font-weight:700;">恒丰财务 <span id="status" style="font-size:10px; color:var(--success)">● 云同步中</span></div>
+        <button onclick="document.getElementById('xl').click()" style="width:auto; margin:0;">📂 导入 Excel</button>
+        <input type="file" id="xl" hidden onchange="syncExcel(this)">
     </div>
 
-    <div class="card" style="flex: 0.8;">
-        <div id="detail_title" style="font-weight:700; margin-bottom:15px; color:var(--accent)">请选择左侧客户查看详情</div>
-        
-        <div id="input_area" style="display:none; background:#f5faff; padding:15px; border-radius:10px; margin-bottom:20px;">
-            <div style="font-size:13px; font-weight:600; margin-bottom:10px;">快速录入该客户回款：</div>
-            <input type="number" id="p_amt" class="apple-input" placeholder="回款金额">
-            <input type="date" id="p_day" class="apple-input">
-            <button class="apple-btn" style="width:100%" id="btn_save" onclick="addPay()">确认记账并同步</button>
-        </div>
+    <div class="summary-grid">
+        <div class="summary-card"><div class="summary-label">总开票金额</div><div class="summary-val" id="v_i">0.00</div></div>
+        <div class="summary-card"><div class="summary-label">总已回款</div><div class="summary-val" id="v_p" style="color:var(--success)">0.00</div></div>
+        <div class="summary-card"><div class="summary-label">总待付款</div><div class="summary-val" id="v_b" style="color:var(--danger)">0.00</div></div>
+    </div>
 
-        <div style="font-weight:600; font-size:13px; margin-bottom:10px;">回款历史明细：</div>
-        <div style="overflow-y:auto; flex:1;">
-            <table>
-                <thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead>
-                <tbody id="detail_body"></tbody>
-            </table>
+    <div class="container">
+        <div class="box list-box">
+            <div class="scroll">
+                <table>
+                    <thead><tr><th>客户名称</th><th>开票总额</th><th>待付款</th></tr></thead>
+                    <tbody id="client_list"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="box detail-box">
+            <div id="welcome" style="padding:40px; text-align:center; color:#86868b;">点击左侧客户查看明细并录入</div>
+            <div id="detail_ui" style="display:none; flex-direction:column; height:100%;">
+                <div style="padding:20px; border-bottom:0.5px solid #eee;">
+                    <h3 id="cur_name" style="margin:0 0 10px 0;"></h3>
+                    <div id="cur_stat" style="font-size:14px;"></div>
+                </div>
+                <div class="scroll" style="padding:0 20px;">
+                    <h4 style="font-size:13px; color:#86868b;">未付发票明细</h4>
+                    <table id="inv_table"><thead><tr><th>号码</th><th>金额</th><th>日期</th><th>备注</th></tr></thead><tbody></tbody></table>
+                    <h4 style="font-size:13px; color:#86868b; margin-top:24px;">回款历史记录</h4>
+                    <table id="pay_table"><thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead><tbody></tbody></table>
+                </div>
+                <div class="input-group">
+                    <div style="font-weight:600; margin-bottom:10px; font-size:13px;">录入新回款：</div>
+                    <input type="number" id="p_amt" placeholder="回款金额">
+                    <input type="date" id="p_day">
+                    <button id="p_btn" onclick="savePay()">确认提交并同步</button>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
 <script>
-    const SUPABASE_URL = "https://vjelnswcmypvypegqxrb.supabase.co"; 
-    const SUPABASE_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const S_URL = "https://vjelnswcmypvypegqxrb.supabase.co";
+    const S_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
+    const sb = supabase.createClient(S_URL, S_KEY);
 
-    let INVOICES = JSON.parse(localStorage.getItem('HF_INV')) || [];
-    let CLIS = JSON.parse(localStorage.getItem('HF_CLIS')) || {};
-    let PAYMENTS = [];
-    let CURRENT_TID = null;
+    let ALL_INVS = [], ALL_PAYS = [], CUR_CID = null;
 
-    // --- 核心：解决不更新的问题 ---
-    // 监听云端数据变化，一旦有变动立刻刷新界面
-    _supabase.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
-        fetchPayments();
-    }).subscribe();
-
-    async function fetchPayments() {
-        document.getElementById('sync_status').innerText = "○ 同步中...";
-        const { data, error } = await _supabase.from('payments').select('*').order('pay_date', { ascending: false });
-        if (!error) {
-            PAYMENTS = data;
-            render();
-            if (CURRENT_TID) showDetail(CURRENT_TID);
-            document.getElementById('sync_status').innerText = "● 云端已同步";
-        }
+    async function load() {
+        document.getElementById('status').innerText = "○ 同步中...";
+        const { data: i } = await sb.from('invoices').select('*');
+        const { data: p } = await sb.from('payments').select('*').order('pay_date', {ascending: false});
+        ALL_INVS = i || []; ALL_PAYS = p || [];
+        renderList();
+        if(CUR_CID) show(CUR_CID);
+        document.getElementById('status').innerText = "● 云端同步";
     }
 
-    async function addPay() {
-        const amt = parseFloat(document.getElementById('p_amt').value);
-        const day = document.getElementById('p_day').value;
-        if (!CURRENT_TID || isNaN(amt) || !day) return alert('请填全信息');
-
-        const btn = document.getElementById('btn_save');
-        btn.disabled = true; btn.innerText = '同步中...';
-
-        const { error } = await _supabase.from('payments').insert([
-            { client_name: CLIS[CURRENT_TID], amount: amt, pay_date: day, client_id: CURRENT_TID }
-        ]);
-        
-        if (error) { alert('失败:' + error.message); } 
-        else { document.getElementById('p_amt').value = ''; }
-        btn.disabled = false; btn.innerText = '确认记账并同步';
-    }
-
-    function handleTaxImport(input) {
+    async function syncExcel(obj) {
         const reader = new FileReader();
-        reader.onload = (e) => {
-            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            json.forEach(row => {
-                const invId = String(row['数电票号码'] || row['数电发票号码'] || "");
-                const tid = String(row['购方识别号'] || row['购买方识别号'] || "");
-                if (invId && tid) {
-                    CLIS[tid] = row['购买方名称'] || row['购方名称'];
-                    if (!INVOICES.find(x => x.id === invId)) {
-                        INVOICES.push({ id: invId, tid: tid, amt: parseFloat(row['价税合计'] || 0) });
-                    }
-                }
-            });
-            localStorage.setItem('HF_INV', JSON.stringify(INVOICES));
-            localStorage.setItem('HF_CLIS', JSON.stringify(CLIS));
-            render();
-            alert('导入成功');
+        reader.onload = async (e) => {
+            const data = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type:'array'}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type:'array'}).SheetNames[0]]);
+            const up = data.map(r => ({
+                invoice_num: String(r['数电票号码'] || r['数电发票号码'] || ""),
+                client_id: String(r['购方识别号'] || r['购买方识别号'] || ""),
+                client_name: r['购买方名称'] || r['购方名称'],
+                amount: parseFloat(r['价税合计'] || 0),
+                inv_date: r['开票日期'],
+                is_red: (r['备注'] && r['备注'].includes('红冲')) || (parseFloat(r['价税合计']) < 0),
+                remark: r['备注'] || ""
+            })).filter(x => x.invoice_num);
+            await sb.from('invoices').upsert(up);
+            alert("云端更新成功！");
+            load();
         };
-        reader.readAsArrayBuffer(input.files[0]);
+        reader.readAsArrayBuffer(obj.files[0]);
     }
 
-    function showDetail(tid) {
-        CURRENT_TID = tid;
-        document.getElementById('detail_title').innerText = "当前客户：" + CLIS[tid];
-        document.getElementById('input_area').style.display = 'block';
-        
-        const dBody = document.getElementById('detail_body');
-        dBody.innerHTML = '';
-        
-        const filtered = PAYMENTS.filter(p => p.client_id === tid || p.client_name === CLIS[tid]);
-        filtered.forEach(p => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${p.pay_date}</td><td style="text-align:right;">${parseFloat(p.amount).toLocaleString()}</td>`;
-            dBody.appendChild(tr);
-        });
-
-        // 高亮左侧行
-        document.querySelectorAll('#main_body tr').forEach(tr => tr.classList.remove('active-row'));
-        const activeTr = document.querySelector(`tr[data-tid="${tid}"]`);
-        if (activeTr) activeTr.classList.add('active-row');
+    async function savePay() {
+        const a = document.getElementById('p_amt').value, d = document.getElementById('p_day').value;
+        if(!a || !d) return;
+        document.getElementById('p_btn').disabled = true;
+        const name = ALL_INVS.find(x => x.client_id === CUR_CID).client_name;
+        await sb.from('payments').insert([{ client_id: CUR_CID, client_name: name, amount: a, pay_date: d }]);
+        document.getElementById('p_amt').value = '';
+        await load();
+        document.getElementById('p_btn').disabled = false;
     }
 
-    function render() {
-        const mBody = document.getElementById('main_body');
-        mBody.innerHTML = '';
-        let sums = {};
-        INVOICES.forEach(i => {
-            if (!sums[i.tid]) sums[i.tid] = { i: 0, p: 0 };
-            sums[i.tid].i += i.amt;
-        });
-        PAYMENTS.forEach(p => {
-            const tid = Object.keys(CLIS).find(k => CLIS[k] === p.client_name) || p.client_id;
-            if (tid && sums[tid]) sums[tid].p += parseFloat(p.amount);
+    function show(cid) {
+        CUR_CID = cid;
+        document.getElementById('welcome').style.display = 'none';
+        document.getElementById('detail_ui').style.display = 'flex';
+        const client_invs = ALL_INVS.filter(x => x.client_id === cid);
+        const client_pays = ALL_PAYS.filter(x => x.client_id === cid);
+        
+        document.getElementById('cur_name').innerText = client_invs[0].client_name;
+        const totalI = client_invs.reduce((s, x) => s + x.amount, 0);
+        const totalP = client_pays.reduce((s, x) => s + x.amount, 0);
+        document.getElementById('cur_stat').innerHTML = `总开票: ${totalI.toLocaleString()} | 已回款: <span style="color:var(--success)">${totalP.toLocaleString()}</span> | 待付: <span style="color:var(--danger)">${(totalI-totalP).toLocaleString()}</span>`;
+
+        const it = document.querySelector('#inv_table tbody'); it.innerHTML = '';
+        client_invs.sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date)).forEach(i => {
+            it.innerHTML += `<tr><td>${i.invoice_num}</td><td>${i.amount.toLocaleString()}</td><td>${i.inv_date}</td><td>${i.is_red ? '<span class="tag tag-red">红冲票</span>':''} <small>${i.remark||''}</small></td></tr>`;
         });
 
-        let tI = 0, tP = 0;
-        Object.keys(sums).sort((a,b) => (sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(tid => {
-            const bal = sums[tid].i - sums[tid].p;
-            tI += sums[tid].i; tP += sums[tid].p;
-            const tr = document.createElement('tr');
-            tr.setAttribute('data-tid', tid);
-            tr.onclick = () => showDetail(tid);
-            tr.innerHTML = `<td>${CLIS[tid]}</td><td>${sums[tid].i.toLocaleString()}</td><td>${sums[tid].p.toLocaleString()}</td><td style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#333'}">${bal.toLocaleString()}</td>`;
-            mBody.appendChild(tr);
+        const pt = document.querySelector('#pay_table tbody'); pt.innerHTML = '';
+        client_pays.forEach(p => {
+            pt.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;">${parseFloat(p.amount).toLocaleString()}</td></tr>`;
         });
 
-        document.getElementById('total_i').innerText = tI.toLocaleString();
-        document.getElementById('total_p').innerText = tP.toLocaleString();
-        document.getElementById('total_b').innerText = (tI - tP).toLocaleString();
+        document.querySelectorAll('#client_list tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
+    }
+
+    function renderList() {
+        const list = document.getElementById('client_list'); list.innerHTML = '';
+        let sums = {}, ti = 0, tp = 0;
+        ALL_INVS.forEach(i => { if(!sums[i.client_id]) sums[i.client_id] = {n: i.client_name, i:0, p:0}; sums[i.client_id].i += i.amount; });
+        ALL_PAYS.forEach(p => { if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount); });
+
+        Object.keys(sums).sort((a,b) => (sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
+            const s = sums[cid]; const bal = s.i - s.p;
+            ti += s.i; tp += s.p;
+            const tr = document.createElement('tr'); tr.dataset.id = cid;
+            tr.onclick = () => show(cid);
+            tr.innerHTML = `<td>${s.n}</td><td>${s.i.toLocaleString()}</td><td style="text-align:right; color:${bal>0?'var(--danger)':'#333'}">${bal.toLocaleString()}</td>`;
+            list.appendChild(tr);
+        });
+
+        document.getElementById('v_i').innerText = ti.toLocaleString();
+        document.getElementById('v_p').innerText = tp.toLocaleString();
+        document.getElementById('v_b').innerText = (ti - tp).toLocaleString();
     }
 
     document.getElementById('p_day').valueAsDate = new Date();
-    fetchPayments();
-    // 每 5 秒强制拉取一次，确保手机端绝对更新
-    setInterval(fetchPayments, 5000);
+    load(); setInterval(load, 8000);
 </script>
-</body>
-</html>
 </body>
 </html>
