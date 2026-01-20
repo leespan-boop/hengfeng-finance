@@ -3,42 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务 | 全云同步系统</title>
+    <title>恒丰财务 | 专业云同步</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --main: #007aff; --success: #34c759; --danger: #ff3b30; --bg: #f5f5f7; --card: #ffffff; }
         body { font-family: -apple-system, "SF Pro Display", sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .nav { height: 60px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 0.5px solid #d1d1d6; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; }
+        
+        /* 导航与汇总 */
+        .nav { height: 60px; background: #fff; border-bottom: 0.5px solid #d1d1d6; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; z-index: 100; }
         .nav-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-        .sync-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
-        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 24px; flex-shrink: 0; }
-        .card { background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .label { font-size: 13px; color: #86868b; margin-bottom: 8px; font-weight: 500; }
-        .val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-        .filter-bar { padding: 0 24px 15px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: #86868b; }
-        .date-input { border: 1px solid #d1d1d6; border-radius: 8px; padding: 4px 8px; font-size: 13px; }
-        .main { flex: 1; display: flex; gap: 20px; padding: 0 24px 24px; overflow: hidden; }
-        .box { background: var(--card); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .scroll { overflow-y: auto; flex: 1; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #fafafa; padding: 12px; font-size: 11px; color: #86868b; text-transform: uppercase; position: sticky; top: 0; text-align: left; }
-        td { padding: 14px 12px; font-size: 13px; border-bottom: 0.5px solid #f2f2f7; }
+        .sync-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; }
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px 20px; flex-shrink: 0; }
+        .card { background: var(--card); padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .label { font-size: 12px; color: #86868b; margin-bottom: 4px; }
+        .val { font-size: 22px; font-weight: 700; }
+
+        /* 时间筛选 */
+        .filter-bar { padding: 0 20px 10px; display: flex; gap: 10px; align-items: center; font-size: 12px; color: #86868b; }
+        .date-input { border: 1px solid #d1d1d6; border-radius: 6px; padding: 4px; font-size: 12px; }
+
+        /* 主内容布局：优化间距 */
+        .main { flex: 1; display: flex; gap: 15px; padding: 0 20px 20px; overflow: hidden; }
+        .box { background: var(--card); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .scroll { overflow-y: auto; flex: 1; position: relative; }
+        
+        /* 表格精修：压缩间距，修复漏字 */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { background: #fff; padding: 10px; font-size: 11px; color: #86868b; position: sticky; top: 0; z-index: 10; text-align: left; border-bottom: 1px solid #f2f2f7; }
+        td { padding: 10px; font-size: 13px; border-bottom: 0.5px solid #f2f2f7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .col-name { width: 45%; } .col-amt { width: 18%; } .col-p { width: 18%; } .col-bal { width: 19%; }
+        
         tr:hover td { background: #f9f9fb; cursor: pointer; }
         .active-row td { background: #f2f8ff !important; color: var(--main); font-weight: 600; }
-        .tag-red { background: #fff2f2; color: var(--danger); font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 0.5px solid #ffcfcf; }
-        .detail-header { padding: 24px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: flex-start; }
-        .input-group { background: #f9f9fb; padding: 20px; border-radius: 16px; margin: 20px; border: 0.5px solid #e5e5ea; }
-        input[type="number"], input[type="date"] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; margin-bottom: 12px; box-sizing: border-box; }
-        .btn { background: var(--main); color: #fff; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-        .btn-del { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 4px 8px; font-size: 11px; border-radius: 6px; }
-        @media (max-width: 900px) { .main { flex-direction: column; overflow-y: auto; } .summary-grid { grid-template-columns: 1fr; } }
+        .tag-red { background: #fff2f2; color: var(--danger); font-size: 10px; padding: 1px 4px; border-radius: 3px; }
+
+        /* 右侧详情精修 */
+        .detail-header { padding: 20px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #fff; z-index: 11; }
+        .input-group { background: #f9f9fb; padding: 15px; border-radius: 12px; margin: 15px; border: 0.5px solid #e5e5ea; flex-shrink: 0; }
+        input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d1d6; margin-bottom: 10px; box-sizing: border-box; }
+        
+        .btn { background: var(--main); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .btn-del-record { color: var(--danger); cursor: pointer; font-size: 16px; margin-left: 8px; display: inline-block; vertical-align: middle; }
+        .btn-client-del { color: var(--danger); border: 1px solid var(--danger); padding: 4px 8px; border-radius: 6px; font-size: 11px; background: transparent; }
+
+        @media (max-width: 1024px) { .main { flex-direction: column; overflow-y: auto; } }
     </style>
 </head>
 <body>
     <div class="nav">
         <div class="nav-title"><div class="sync-dot"></div> 恒丰财务云同步</div>
-        <button class="btn" onclick="document.getElementById('xl').click()" style="padding:8px 16px; font-size:13px;">📂 导入税务 Excel</button>
+        <button class="btn" onclick="document.getElementById('xl').click()" style="padding:6px 12px; font-size:12px;">📂 导入税务 Excel</button>
         <input type="file" id="xl" hidden onchange="processExcel(this)">
     </div>
 
@@ -48,28 +63,54 @@
         <div class="card"><div class="label">总待付款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
     </div>
 
-    <div class="filter-bar">日期筛选：<input type="date" id="f_start" class="date-input" onchange="render()"> 至 <input type="date" id="f_end" class="date-input" onchange="render()"></div>
+    <div class="filter-bar">
+        筛选：从 <input type="date" id="f_start" class="date-input" onchange="render()"> 
+        至 <input type="date" id="f_end" class="date-input" onchange="render()">
+    </div>
 
     <div class="main">
-        <div class="box" style="flex: 1.3;"><div class="scroll"><table><thead><tr><th>客户名称</th><th>开票总额</th><th>已回款</th><th style="text-align:right;">待付款</th></tr></thead><tbody id="list_body"></tbody></table></div></div>
-        <div class="box" style="flex: 1;">
-            <div id="tip" style="padding:60px; text-align:center; color:#86868b;">点击左侧客户查看明细</div>
+        <div class="box" style="flex: 1.1;">
+            <div class="scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-name">客户名称</th>
+                            <th class="col-amt">开票</th>
+                            <th class="col-p">已回</th>
+                            <th class="col-bal" style="text-align:right;">待付</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list_body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="box" style="flex: 1.5;">
+            <div id="tip" style="padding:60px; text-align:center; color:#86868b;">点击左侧客户查看明细账</div>
             <div id="detail_ui" style="display:none; flex-direction:column; height:100%;">
                 <div class="detail-header">
-                    <h2 id="c_name" style="margin:0; font-size:20px; flex:1;"></h2>
-                    <button class="btn-del" onclick="deleteClient()">🗑️ 移除此客户</button>
+                    <h2 id="c_name" style="margin:0; font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;"></h2>
+                    <button class="btn-client-del" onclick="deleteClient()">移除客户</button>
                 </div>
-                <div class="scroll" style="padding:20px;">
-                    <div id="c_summary" style="font-size:12px; margin-bottom:20px; color:#666; background:#f0f7ff; padding:10px; border-radius:8px;"></div>
-                    <h4 style="font-size:12px; color:#86868b; margin-bottom:10px;">🧾 发票流水</h4>
-                    <table id="inv_table" style="margin-bottom:30px;"><thead><tr><th>号码/日期</th><th>金额</th><th>备注</th></tr></thead><tbody></tbody></table>
-                    <h4 style="font-size:12px; color:#86868b; margin-bottom:10px;">💰 回款历史</h4>
-                    <table id="pay_table"><thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead><tbody></tbody></table>
+                <div class="scroll" style="padding:15px;">
+                    <div id="c_summary" style="font-size:12px; margin-bottom:15px; background:#f0f7ff; padding:10px; border-radius:8px; line-height:1.6;"></div>
+                    
+                    <h4 style="font-size:12px; color:#86868b; margin-bottom:8px;">🧾 发票流水 (同号自动合并)</h4>
+                    <table id="inv_table" style="table-layout: auto; margin-bottom:20px;">
+                        <thead><tr><th>号码/日期</th><th>金额</th><th>备注</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <h4 style="font-size:12px; color:#86868b; margin-bottom:8px;">💰 回款历史 (可删除错账)</h4>
+                    <table id="pay_table" style="table-layout: auto;">
+                        <thead><tr><th>日期</th><th style="text-align:right;">金额/操作</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
                 <div class="input-group">
-                    <input type="number" id="amt" placeholder="录入新回款金额">
+                    <input type="number" id="amt" placeholder="输入回款金额">
                     <input type="date" id="p_day">
-                    <button class="btn" onclick="savePayment()" style="width:100%;">确认提交云端</button>
+                    <button class="btn" onclick="savePayment()" style="width:100%;">确认提交</button>
                 </div>
             </div>
         </div>
@@ -98,21 +139,26 @@
                 if(!merged[num]) merged[num] = { invoice_num: String(num), client_id: String(cid), client_name: String(cname), amount: 0, inv_date: r['开票日期']||r['日期'], is_red: false, remark: r['备注']||"" };
                 merged[num].amount += amt; if(amt < 0) merged[num].is_red = true;
             });
-            const { error } = await sb.from('invoices').upsert(Object.values(merged));
-            if(!error) load();
+            await sb.from('invoices').upsert(Object.values(merged)); load();
         };
         reader.readAsArrayBuffer(obj.files[0]);
     }
 
     async function savePayment() {
         const a = document.getElementById('amt').value, d = document.getElementById('p_day').value;
-        if(!a || !d || !curCid) return alert('请填全信息');
-        const { error } = await sb.from('payments').insert([{ client_id: curCid, client_name: ALL_I.find(x=>x.client_id===curCid).client_name, amount: a, pay_date: d }]);
-        if(!error) { document.getElementById('amt').value = ''; await load(); }
+        if(!a || !d || !curCid) return alert('必填');
+        await sb.from('payments').insert([{ client_id: curCid, client_name: ALL_I.find(x=>x.client_id===curCid).client_name, amount: a, pay_date: d }]);
+        document.getElementById('amt').value = ''; await load();
+    }
+
+    async function deletePay(pid) {
+        if(!confirm("确定要删除这笔回款吗？")) return;
+        await sb.from('payments').delete().eq('id', pid);
+        await load();
     }
 
     async function deleteClient() {
-        if(!confirm("确定要删除该客户的所有发票和回款记录吗？此操作不可撤销。")) return;
+        if(!confirm("彻底删除该客户所有记录？")) return;
         await sb.from('invoices').delete().eq('client_id', curCid);
         await sb.from('payments').delete().eq('client_id', curCid);
         curCid = null; document.getElementById('detail_ui').style.display='none'; document.getElementById('tip').style.display='block';
@@ -125,14 +171,14 @@
         const pays = ALL_P.filter(x => x.client_id === cid);
         const si = invs.reduce((s,x)=>s+x.amount,0), sp = pays.reduce((s,x)=>s+x.amount,0);
 
-        document.getElementById('c_name').innerText = invs[0]?.client_name || "未知客户";
-        document.getElementById('c_summary').innerHTML = `总开票: ¥${si.toLocaleString()} | 总回款: ¥${sp.toLocaleString()} | 待付: <b>¥${(si-sp).toLocaleString()}</b>`;
+        document.getElementById('c_name').innerText = invs[0]?.client_name || "未知";
+        document.getElementById('c_summary').innerHTML = `开票总额: ¥${si.toLocaleString()}<br>累计回款: ¥${sp.toLocaleString()}<br>剩余待付: <b style="color:var(--danger)">¥${(si-sp).toLocaleString()}</b>`;
         
         const ib = document.querySelector('#inv_table tbody'); ib.innerHTML = '';
         invs.forEach(i => ib.innerHTML += `<tr><td><b>${i.invoice_num}</b><br><small style="color:#999">${i.inv_date}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="tag-red">红冲</span>':''} <small style="color:#86868b">${i.remark||''}</small></td></tr>`);
         
         const pb = document.querySelector('#pay_table tbody'); pb.innerHTML = '';
-        pays.forEach(p => pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right; font-weight:600;">${parseFloat(p.amount).toLocaleString()}</td></tr>`);
+        pays.forEach(p => pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;"><b>¥${parseFloat(p.amount).toLocaleString()}</b> <span class="btn-del-record" onclick="deletePay('${p.id}')">⊗</span></td></tr>`);
         
         document.querySelectorAll('#list_body tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
     }
@@ -151,14 +197,14 @@
         Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
             const s = sums[cid], bal = s.i - s.p; ti += s.i; tp += s.p;
             const tr = document.createElement('tr'); tr.dataset.id = cid; tr.onclick = () => showDetail(cid);
-            tr.innerHTML = `<td><b>${s.n}</b></td><td>${s.i.toLocaleString()}</td><td style="color:var(--success)">${s.p.toLocaleString()}</td><td style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#1d1d1f'}">${bal.toLocaleString()}</td>`;
+            tr.innerHTML = `<td class="col-name"><b>${s.n}</b></td><td class="col-amt">${s.i.toLocaleString()}</td><td class="col-p" style="color:var(--success)">${s.p.toLocaleString()}</td><td class="col-bal" style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#1d1d1f'}">${bal.toLocaleString()}</td>`;
             body.appendChild(tr);
         });
         document.getElementById('total_i').innerText = ti.toLocaleString(); document.getElementById('total_p').innerText = tp.toLocaleString(); document.getElementById('total_b').innerText = (ti-tp).toLocaleString();
     }
 
     document.getElementById('p_day').valueAsDate = new Date();
-    load(); setInterval(load, 20000);
+    load();
 </script>
 </body>
 </html>
