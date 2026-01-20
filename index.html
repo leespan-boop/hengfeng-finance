@@ -3,75 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恒丰财务旗舰版 - 全云同步</title>
+    <title>恒丰财务 - 全云同步正式版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --main: #007aff; --success: #34c759; --warning: #ff9500; --danger: #ff3b30; --bg: #f5f5f7; }
-        body { font-family: -apple-system, "SF Pro Text", sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; }
-        .nav { height: 64px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 0.5px solid #d1d1d6; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 100; }
-        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px; }
-        .summary-card { background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .summary-label { font-size: 13px; color: #86868b; margin-bottom: 8px; }
-        .summary-val { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-        .container { display: flex; gap: 20px; padding: 0 20px 20px; height: calc(100vh - 200px); }
-        .box { background: #fff; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .list-box { flex: 1.4; } .detail-box { flex: 1; border-left: 0.5px solid #eee; }
+        :root { --main: #007aff; --success: #34c759; --danger: #ff3b30; --bg: #f5f5f7; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; height: 100vh; display: flex; flex-direction: column; }
+        .nav { height: 60px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px; flex-shrink: 0; }
+        .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .label { font-size: 12px; color: #86868b; margin-bottom: 5px; }
+        .val { font-size: 20px; font-weight: 700; }
+        .content { flex: 1; display: flex; gap: 15px; padding: 0 15px 15px; overflow: hidden; }
+        .box { background: #fff; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .list-side { flex: 1.2; } .detail-side { flex: 1; }
         .scroll { overflow-y: auto; flex: 1; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #fafafa; padding: 12px; font-size: 12px; color: #86868b; text-align: left; position: sticky; top: 0; }
-        td { padding: 14px 12px; font-size: 14px; border-bottom: 0.5px solid #f2f2f7; cursor: pointer; }
-        tr:hover td { background: #f9f9fb; }
-        .active-row td { background: #f2f8ff !important; font-weight: 600; color: var(--main); }
-        .tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-        .tag-red { background: #fff2f2; color: var(--danger); border: 0.5px solid #ffcfcf; }
-        .input-group { background: #f9f9fb; padding: 16px; border-radius: 12px; margin: 12px; }
-        input, button { border-radius: 10px; border: 1px solid #ddd; padding: 12px; font-size: 14px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
-        button { background: var(--main); color: #fff; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        button:active { opacity: 0.8; transform: scale(0.98); }
-        @media (max-width: 768px) { .container { flex-direction: column; height: auto; } .summary-grid { grid-template-columns: 1fr; } }
+        th { background: #fafafa; padding: 10px; font-size: 12px; color: #86868b; text-align: left; position: sticky; top: 0; }
+        td { padding: 12px 10px; font-size: 13px; border-bottom: 1px solid #f2f2f7; cursor: pointer; }
+        .active-row td { background: #f2f8ff !important; color: var(--main); font-weight: 600; }
+        .red-tag { background: #fff2f2; color: var(--danger); font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid #ffcfcf; }
+        .input-panel { background: #f9f9fb; padding: 15px; border-radius: 10px; margin: 10px; border: 1px solid #eee; }
+        input, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 8px; box-sizing: border-box; }
+        button { background: var(--main); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+        @media (max-width: 768px) { .content { flex-direction: column; overflow-y: auto; } .summary-grid { grid-template-columns: 1fr; } .content { height: auto; } }
     </style>
 </head>
 <body>
     <div class="nav">
-        <div style="font-size:18px; font-weight:700;">恒丰财务 <span id="status" style="font-size:10px; color:var(--success)">● 云同步中</span></div>
-        <button onclick="document.getElementById('xl').click()" style="width:auto; margin:0;">📂 导入 Excel</button>
-        <input type="file" id="xl" hidden onchange="syncExcel(this)">
+        <div style="font-weight:700;">恒丰财务 <span id="sync_st" style="color:var(--success); font-size:10px;">●</span></div>
+        <button onclick="document.getElementById('file').click()" style="width:auto; margin:0; padding:6px 12px; font-size:12px;">📂 导入并同步全端</button>
+        <input type="file" id="file" hidden onchange="syncExcel(this)">
     </div>
 
     <div class="summary-grid">
-        <div class="summary-card"><div class="summary-label">总开票金额</div><div class="summary-val" id="v_i">0.00</div></div>
-        <div class="summary-card"><div class="summary-label">总已回款</div><div class="summary-val" id="v_p" style="color:var(--success)">0.00</div></div>
-        <div class="summary-card"><div class="summary-label">总待付款</div><div class="summary-val" id="v_b" style="color:var(--danger)">0.00</div></div>
+        <div class="card"><div class="label">总开票金额</div><div class="val" id="total_i">0.00</div></div>
+        <div class="card"><div class="label">总已回款</div><div class="val" id="total_p" style="color:var(--success)">0.00</div></div>
+        <div class="card"><div class="label">总待付款</div><div class="val" id="total_b" style="color:var(--danger)">0.00</div></div>
     </div>
 
-    <div class="container">
-        <div class="box list-box">
+    <div class="content">
+        <div class="box list-side">
             <div class="scroll">
                 <table>
-                    <thead><tr><th>客户名称</th><th>开票总额</th><th>待付款</th></tr></thead>
-                    <tbody id="client_list"></tbody>
+                    <thead><tr><th>客户</th><th>开票总额</th><th style="text-align:right;">待付款</th></tr></thead>
+                    <tbody id="list_body"></tbody>
                 </table>
             </div>
         </div>
-        <div class="box detail-box">
-            <div id="welcome" style="padding:40px; text-align:center; color:#86868b;">点击左侧客户查看明细并录入</div>
+        <div class="box detail-side">
+            <div id="tip" style="padding:40px; text-align:center; color:#ccc;">点击左侧客户查看详情</div>
             <div id="detail_ui" style="display:none; flex-direction:column; height:100%;">
-                <div style="padding:20px; border-bottom:0.5px solid #eee;">
-                    <h3 id="cur_name" style="margin:0 0 10px 0;"></h3>
-                    <div id="cur_stat" style="font-size:14px;"></div>
+                <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;">
+                    <h3 id="c_name" style="margin:0 0 5px 0; color:var(--main);"></h3>
+                    <div id="c_summary" style="font-size:12px; color:#666;"></div>
                 </div>
-                <div class="scroll" style="padding:0 20px;">
-                    <h4 style="font-size:13px; color:#86868b;">未付发票明细</h4>
-                    <table id="inv_table"><thead><tr><th>号码</th><th>金额</th><th>日期</th><th>备注</th></tr></thead><tbody></tbody></table>
-                    <h4 style="font-size:13px; color:#86868b; margin-top:24px;">回款历史记录</h4>
-                    <table id="pay_table"><thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead><tbody></tbody></table>
+                <div class="scroll" style="padding:10px;">
+                    <div style="font-weight:bold; font-size:12px; margin-bottom:10px;">🧾 发票流水 (含红冲识别)</div>
+                    <table style="margin-bottom:20px;">
+                        <thead><tr><th>号码</th><th>金额</th><th>备注</th></tr></thead>
+                        <tbody id="inv_detail"></tbody>
+                    </table>
+                    <div style="font-weight:bold; font-size:12px; margin-bottom:10px;">💰 回款记录</div>
+                    <table>
+                        <thead><tr><th>日期</th><th style="text-align:right;">金额</th></tr></thead>
+                        <tbody id="pay_detail"></tbody>
+                    </table>
                 </div>
-                <div class="input-group">
-                    <div style="font-weight:600; margin-bottom:10px; font-size:13px;">录入新回款：</div>
-                    <input type="number" id="p_amt" placeholder="回款金额">
-                    <input type="date" id="p_day">
-                    <button id="p_btn" onclick="savePay()">确认提交并同步</button>
+                <div class="input-panel">
+                    <input type="number" id="amt" placeholder="输入回款金额">
+                    <input type="date" id="day">
+                    <button id="btn" onclick="addPay()">记录回款并同步</button>
                 </div>
             </div>
         </div>
@@ -82,16 +84,13 @@
     const S_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
     const sb = supabase.createClient(S_URL, S_KEY);
 
-    let ALL_INVS = [], ALL_PAYS = [], CUR_CID = null;
+    let ALL_I = [], ALL_P = [], curId = null;
 
     async function load() {
-        document.getElementById('status').innerText = "○ 同步中...";
         const { data: i } = await sb.from('invoices').select('*');
         const { data: p } = await sb.from('payments').select('*').order('pay_date', {ascending: false});
-        ALL_INVS = i || []; ALL_PAYS = p || [];
-        renderList();
-        if(CUR_CID) show(CUR_CID);
-        document.getElementById('status').innerText = "● 云端同步";
+        ALL_I = i || []; ALL_P = p || [];
+        render(); if(curId) show(curId);
     }
 
     async function syncExcel(obj) {
@@ -104,74 +103,64 @@
                 client_name: r['购买方名称'] || r['购方名称'],
                 amount: parseFloat(r['价税合计'] || 0),
                 inv_date: r['开票日期'],
-                is_red: (r['备注'] && r['备注'].includes('红冲')) || (parseFloat(r['价税合计']) < 0),
+                is_red: parseFloat(r['价税合计']) < 0,
                 remark: r['备注'] || ""
-            })).filter(x => x.invoice_num);
+            })).filter(x => x.invoice_num && x.client_id);
             await sb.from('invoices').upsert(up);
-            alert("云端更新成功！");
+            alert("同步成功！已搬运到云端");
             load();
         };
         reader.readAsArrayBuffer(obj.files[0]);
     }
 
-    async function savePay() {
-        const a = document.getElementById('p_amt').value, d = document.getElementById('p_day').value;
-        if(!a || !d) return;
-        document.getElementById('p_btn').disabled = true;
-        const name = ALL_INVS.find(x => x.client_id === CUR_CID).client_name;
-        await sb.from('payments').insert([{ client_id: CUR_CID, client_name: name, amount: a, pay_date: d }]);
-        document.getElementById('p_amt').value = '';
-        await load();
-        document.getElementById('p_btn').disabled = false;
+    async function addPay() {
+        const a = document.getElementById('amt').value, d = document.getElementById('day').value;
+        if(!a || !d || !curId) return alert('请填全');
+        const c_name = ALL_I.find(x => x.client_id === curId).client_name;
+        await sb.from('payments').insert([{ client_id: curId, client_name: c_name, amount: a, pay_date: d }]);
+        document.getElementById('amt').value = '';
+        load();
     }
 
     function show(cid) {
-        CUR_CID = cid;
-        document.getElementById('welcome').style.display = 'none';
-        document.getElementById('detail_ui').style.display = 'flex';
-        const client_invs = ALL_INVS.filter(x => x.client_id === cid);
-        const client_pays = ALL_PAYS.filter(x => x.client_id === cid);
-        
-        document.getElementById('cur_name').innerText = client_invs[0].client_name;
-        const totalI = client_invs.reduce((s, x) => s + x.amount, 0);
-        const totalP = client_pays.reduce((s, x) => s + x.amount, 0);
-        document.getElementById('cur_stat').innerHTML = `总开票: ${totalI.toLocaleString()} | 已回款: <span style="color:var(--success)">${totalP.toLocaleString()}</span> | 待付: <span style="color:var(--danger)">${(totalI-totalP).toLocaleString()}</span>`;
+        curId = cid; document.getElementById('tip').style.display='none'; document.getElementById('detail_ui').style.display='flex';
+        const invs = ALL_I.filter(x => x.client_id === cid);
+        const pays = ALL_P.filter(x => x.client_id === cid);
+        const ti = invs.reduce((s,x)=>s+x.amount,0), tp = pays.reduce((s,x)=>s+x.amount,0);
 
-        const it = document.querySelector('#inv_table tbody'); it.innerHTML = '';
-        client_invs.sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date)).forEach(i => {
-            it.innerHTML += `<tr><td>${i.invoice_num}</td><td>${i.amount.toLocaleString()}</td><td>${i.inv_date}</td><td>${i.is_red ? '<span class="tag tag-red">红冲票</span>':''} <small>${i.remark||''}</small></td></tr>`;
+        document.getElementById('c_name').innerText = invs[0].client_name;
+        document.getElementById('c_summary').innerHTML = `开票: ${ti.toLocaleString()} | 已回: ${tp.toLocaleString()} | 待付: <b style="color:var(--danger)">${(ti-tp).toLocaleString()}</b>`;
+
+        const ib = document.getElementById('inv_detail'); ib.innerHTML = '';
+        invs.sort((a,b)=>new Date(b.inv_date)-new Date(a.inv_date)).forEach(i => {
+            ib.innerHTML += `<tr><td>${i.invoice_num}<br><small style="color:#999">${i.inv_date}</small></td><td>${i.amount.toLocaleString()}</td><td>${i.is_red?'<span class="red-tag">红冲</span>':''} <small style="font-size:10px">${i.remark}</small></td></tr>`;
         });
 
-        const pt = document.querySelector('#pay_table tbody'); pt.innerHTML = '';
-        client_pays.forEach(p => {
-            pt.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;">${parseFloat(p.amount).toLocaleString()}</td></tr>`;
-        });
-
-        document.querySelectorAll('#client_list tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
+        const pb = document.getElementById('pay_detail'); pb.innerHTML = '';
+        pays.forEach(p => { pb.innerHTML += `<tr><td>${p.pay_date}</td><td style="text-align:right;">${parseFloat(p.amount).toLocaleString()}</td></tr>`; });
+        document.querySelectorAll('#list_body tr').forEach(r => r.classList.toggle('active-row', r.dataset.id === cid));
     }
 
-    function renderList() {
-        const list = document.getElementById('client_list'); list.innerHTML = '';
+    function render() {
+        const body = document.getElementById('list_body'); body.innerHTML = '';
         let sums = {}, ti = 0, tp = 0;
-        ALL_INVS.forEach(i => { if(!sums[i.client_id]) sums[i.client_id] = {n: i.client_name, i:0, p:0}; sums[i.client_id].i += i.amount; });
-        ALL_PAYS.forEach(p => { if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount); });
+        ALL_I.forEach(i => { if(!sums[i.client_id]) sums[i.client_id] = {n:i.client_name, i:0, p:0}; sums[i.client_id].i += i.amount; });
+        ALL_P.forEach(p => { if(sums[p.client_id]) sums[p.client_id].p += parseFloat(p.amount); });
 
-        Object.keys(sums).sort((a,b) => (sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
-            const s = sums[cid]; const bal = s.i - s.p;
-            ti += s.i; tp += s.p;
+        Object.keys(sums).sort((a,b)=>(sums[b].i-sums[b].p)-(sums[a].i-sums[a].p)).forEach(cid => {
+            const s = sums[cid], bal = s.i - s.p; ti += s.i; tp += s.p;
             const tr = document.createElement('tr'); tr.dataset.id = cid;
             tr.onclick = () => show(cid);
-            tr.innerHTML = `<td>${s.n}</td><td>${s.i.toLocaleString()}</td><td style="text-align:right; color:${bal>0?'var(--danger)':'#333'}">${bal.toLocaleString()}</td>`;
-            list.appendChild(tr);
+            tr.innerHTML = `<td>${s.n}</td><td>${s.i.toLocaleString()}</td><td style="text-align:right; font-weight:700; color:${bal>0?'var(--danger)':'#333'}">${bal.toLocaleString()}</td>`;
+            body.appendChild(tr);
         });
-
-        document.getElementById('v_i').innerText = ti.toLocaleString();
-        document.getElementById('v_p').innerText = tp.toLocaleString();
-        document.getElementById('v_b').innerText = (ti - tp).toLocaleString();
+        document.getElementById('total_i').innerText = ti.toLocaleString();
+        document.getElementById('total_p').innerText = tp.toLocaleString();
+        document.getElementById('total_b').innerText = (ti-tp).toLocaleString();
     }
 
-    document.getElementById('p_day').valueAsDate = new Date();
-    load(); setInterval(load, 8000);
+    document.getElementById('day').valueAsDate = new Date();
+    load(); setInterval(load, 10000);
 </script>
 </body>
 </html>
