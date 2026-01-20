@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恒丰财务 - 云端同步旗舰版</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --accent: #007aff; --bg: #f5f5f7; --card: #ffffff; --text-main: #1d1d1f; --text-sec: #86868b; --success: #34c759; --danger: #ff3b30; }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .nav { height: 60px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 0.5px solid #ddd; }
+        .view { flex: 1; display: flex; padding: 20px; gap: 20px; overflow: hidden; }
+        .card { background: #fff; padding: 20px; border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .apple-btn { background: var(--accent); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .apple-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 12px; color: var(--text-sec); border-bottom: 1px solid #eee; padding: 12px; }
+        td { padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
+        @media (max-width: 768px) { .view { flex-direction: column; overflow-y: auto; } .stat-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <div style="font-weight: 700;">恒丰财务 <span style="font-weight:400; color:var(--text-sec)">Cloud Sync</span></div>
+    <button class="apple-btn" style="background:#fff; color:#333; border:1px solid #ddd" onclick="document.getElementById('tax_file').click()">📂 导入税务Excel</button>
+    <input type="file" id="tax_file" hidden onchange="handleTaxImport(this)">
+</div>
+
+<div class="view">
+    <div style="flex: 1.5; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="stat-grid">
+            <div class="card"><div>总开票</div><div id="v_i" style="font-size:24px; font-weight:700;">0.00</div></div>
+            <div class="card"><div>已回款</div><div id="v_p" style="font-size:24px; font-weight:700; color:var(--success)">0.00</div></div>
+            <div class="card"><div>待回收</div><div id="v_b" style="font-size:24px; font-weight:700; color:var(--danger)">0.00</div></div>
+        </div>
+        <div class="card" style="flex:1; overflow-y:auto;">
+            <table><thead><tr><th>客户名称</th><th style="text-align:right;">应收余额</th></tr></thead><tbody id="c_body"></tbody></table>
+        </div>
+    </div>
+    <div style="flex: 0.6; display: flex; flex-direction: column; gap: 20px;">
+        <div class="card">
+            <div style="font-weight:700; margin-bottom:15px;">手机端/电脑端 录入回款</div>
+            <select id="p_cli" class="apple-input"></select>
+            <input type="number" id="p_amt" class="apple-input" placeholder="回款金额">
+            <input type="date" id="p_day" class="apple-input">
+            <button class="apple-btn" style="width:100%; margin-top:15px;" id="btn_save" onclick="addPay()">确认记账</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 配置你的云端钥匙
+    const SUPABASE_URL = "https://vjelnswcmypvypegqxrb.supabase.co"; 
+    const SUPABASE_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let INVOICES = JSON.parse(localStorage.getItem('HF_INV')) || [];
+    let CLIS = JSON.parse(localStorage.getItem('HF_CLIS')) || {};
+    let PAYMENTS = [];
+
+    // --- 核心：从云端拉取回款数据 ---
+    async function fetchPayments() {
+        const { data, error } = await supabase.from('payments').select('*');
+        if (!error) {
+            PAYMENTS = data;
+            render();
+        }
+    }
+
+    // --- 核心：存入回款到云端 ---
+    async function addPay() {
+        const btn = document.getElementById('btn_save');
+        const tid = document.getElementById('p_cli').value;
+        const amt = parseFloat(document.getElementById('p_amt').value);
+        const day = document.getElementById('p_day').value;
+        if (!tid || isNaN(amt) || !day) return alert('请填全');
+
+        btn.disabled = true; btn.innerText = '同步中...';
+        const { error } = await supabase.from('payments').insert([{ client_name: CLIS[tid], amount: amt, pay_date: day, client_id: tid }]);
+        
+        if (error) {
+            alert('同步失败，请检查网络');
+        } else {
+            document.getElementById('p_amt').value = '';
+            await fetchPayments();
+        }
+        btn.disabled = false; btn.innerText = '确认记账';
+    }
+
+    // --- 导入发票逻辑 ---
+    function handleTaxImport(input) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            json.forEach(row => {
+                const id = String(row['数电票号码'] || row['数电发票号码'] || "");
+                const tid = String(row['购方识别号'] || row['购买方识别号'] || "");
+                if (id && tid && !INVOICES.find(x => x.id === id)) {
+                    CLIS[tid] = row['购买方名称'] || row['购方名称'];
+                    INVOICES.push({ id, tid, amt: parseFloat(row['价税合计'] || 0), date: row['开票日期'] });
+                }
+            });
+            localStorage.setItem('HF_INV', JSON.stringify(INVOICES));
+            localStorage.setItem('HF_CLIS', JSON.stringify(CLIS));
+            render();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function render() {
+        const tbody = document.getElementById('c_body');
+        const sel = document.getElementById('p_cli');
+        tbody.innerHTML = ''; sel.innerHTML = '';
+        
+        let sums = {};
+        INVOICES.forEach(i => {
+            if (!sums[i.tid]) sums[i.tid] = { i: 0, p: 0 };
+            sums[i.tid].i += i.amt;
+        });
+        PAYMENTS.forEach(p => {
+            // 通过客户名称或ID匹配
+            const tid = Object.keys(CLIS).find(key => CLIS[key] === p.client_name);
+            if (tid && sums[tid]) sums[tid].p += p.amount;
+        });
+
+        let totalI = 0, totalP = 0;
+        Object.keys(sums).forEach(tid => {
+            const bal = sums[tid].i - sums[tid].p;
+            totalI += sums[tid].i; totalP += sums[tid].p;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${CLIS[tid]}</td><td style="text-align:right; font-weight:700;">${bal.toLocaleString()}</td>`;
+            tbody.appendChild(tr);
+            sel.add(new Option(CLIS[tid], tid));
+        });
+
+        document.getElementById('v_i').innerText = totalI.toLocaleString();
+        document.getElementById('v_p').innerText = totalP.toLocaleString();
+        document.getElementById('v_b').innerText = (totalI - totalP).toLocaleString();
+    }
+
+    document.getElementById('p_day').valueAsDate = new Date();
+    fetchPayments(); // 页面加载时自动同步一次
+</script>
+</body>
+</html>
