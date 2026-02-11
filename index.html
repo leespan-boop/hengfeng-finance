@@ -3,71 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>恒丰财务 Pro - 至尊版</title>
+    <title>恒丰财务 Pro - 自定义版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --ios-blue: #007AFF; --ios-green: #34C759; --ios-red: #FF3B30;
-            --ios-bg: #F2F2F7; --ios-card: rgba(255, 255, 255, 0.85);
+            --ios-bg: #F2F2F7; --ios-card: #FFFFFF;
             --text-main: #1C1C1E; --text-sub: #8E8E93;
         }
 
         body {
             background: var(--ios-bg); color: var(--text-main);
-            font-family: -apple-system, "SF Pro Display", system-ui;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding-bottom: 100px; -webkit-font-smoothing: antialiased;
         }
 
-        /* 全局模糊背景装饰 */
-        body::before {
-            content: ""; position: fixed; top: -50px; right: -50px; width: 200px; height: 200px;
-            background: radial-gradient(circle, rgba(0,122,255,0.15) 0%, transparent 70%); z-index: -1;
+        /* 顶部日期筛选区域 - 核心改进 */
+        .filter-header {
+            padding: 50px 20px 20px; position: sticky; top: 0; 
+            background: rgba(242,242,247,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            z-index: 100; border-bottom: 0.5px solid rgba(0,0,0,0.1);
         }
-
-        /* 顶部导航与时间选择 */
-        .header { padding: 60px 20px 20px; position: sticky; top: 0; background: rgba(242,242,247,0.8); backdrop-filter: blur(20px); z-index: 100; }
-        .header h1 { font-size: 32px; margin: 0; font-weight: 800; letter-spacing: -1px; }
+        .filter-header h1 { font-size: 28px; margin: 0 0 15px; font-weight: 800; }
         
-        .time-filter {
-            display: flex; background: rgba(0,0,0,0.05); padding: 4px; border-radius: 10px; margin-top: 15px; gap: 4px;
+        .date-picker-row {
+            display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 14px;
         }
-        .time-btn {
-            flex: 1; border: none; padding: 6px 0; border-radius: 7px; font-size: 13px; font-weight: 600;
-            color: var(--text-sub); background: transparent; transition: all 0.2s;
+        .date-input {
+            background: transparent; border: none; font-size: 14px; font-weight: 600; color: var(--ios-blue);
+            font-family: inherit; outline: none; width: 120px;
         }
-        .time-btn.active { background: white; color: var(--ios-blue); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .date-sep { color: var(--text-sub); font-weight: bold; }
 
-        /* 动态大看板 */
+        /* 核心看板 */
         .hero-card {
-            background: linear-gradient(160deg, #1c1c1e 0%, #3a3a3c 100%);
-            border-radius: 28px; padding: 25px; margin: 20px; color: white;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12); position: relative; overflow: hidden;
+            background: #1c1c1e; color: white; border-radius: 24px; padding: 25px; margin: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
         }
-        .hero-card::after { content: "HF"; position: absolute; right: -10px; bottom: -20px; font-size: 100px; font-weight: 900; opacity: 0.05; }
-        .hero-val { font-size: 40px; font-weight: 800; margin: 10px 0; font-family: 'SF Mono', monospace; letter-spacing: -1px; }
+        .hero-val { font-size: 36px; font-weight: 800; margin: 10px 0; font-family: 'SF Mono', 'Courier New', monospace; }
 
-        /* 内容布局 */
-        .container { padding: 0 20px; max-width: 600px; margin: 0 auto; }
-        .section-title { font-size: 20px; font-weight: 700; margin: 25px 0 15px 5px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* 苹果风格列表卡片 */
+        /* 通用样式 */
+        .container { padding: 0 20px; }
         .ios-card {
-            background: var(--ios-card); backdrop-filter: blur(10px);
-            border-radius: 20px; padding: 18px; margin-bottom: 12px;
-            border: 1px solid rgba(255,255,255,0.5); display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--ios-card); border-radius: 18px; padding: 16px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 0.5px solid rgba(0,0,0,0.05);
         }
-        .ios-card:active { transform: scale(0.97); background: rgba(255,255,255,0.6); }
-        .ios-card .name { font-size: 17px; font-weight: 600; }
-        .ios-card .sub { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
-        .ios-card .amt { font-family: 'SF Mono'; font-weight: 700; font-size: 17px; }
+        .name { font-weight: 700; font-size: 17px; }
+        .sub { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+        .amt { font-family: 'SF Mono'; font-weight: 700; font-size: 17px; }
 
         /* 底部导航 */
         .nav-tab {
-            position: fixed; bottom: 0; width: 100%; height: 88px; background: rgba(255,255,255,0.8);
-            backdrop-filter: blur(25px); border-top: 0.5px solid rgba(0,0,0,0.08);
-            display: flex; padding-bottom: 20px; z-index: 1000;
+            position: fixed; bottom: 0; width: 100%; height: 84px; background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px); display: flex; padding-bottom: env(safe-area-inset-bottom);
+            border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000;
         }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #999; font-size: 10px; font-weight: 600; }
         .nav-item.active { color: var(--ios-blue); }
@@ -76,20 +67,16 @@
         /* 浮动面板 */
         .sheet { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2000; display: none; }
         .sheet-content {
-            position: absolute; bottom: 0; width: 100%; height: 88%; background: var(--ios-bg);
-            border-radius: 30px 30px 0 0; padding: 30px 20px; box-sizing: border-box; overflow-y: auto;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.1); animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute; bottom: 0; width: 100%; height: 85%; background: var(--ios-bg);
+            border-radius: 25px 25px 0 0; padding: 25px; box-sizing: border-box; overflow-y: auto;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* 按钮 */
-        .btn-primary { background: var(--ios-blue); color: white; border: none; padding: 14px 24px; border-radius: 16px; font-weight: 700; width: 100%; font-size: 16px; }
-        .btn-ghost { background: rgba(0,0,0,0.05); color: var(--text-main); border: none; padding: 8px 15px; border-radius: 10px; font-weight: 600; font-size: 13px; }
-        .btn-danger { color: var(--ios-red); background: rgba(255,59,48,0.1); border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
-
-        .tag { padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-right: 6px; }
-        .tag-blue { background: rgba(0,122,255,0.1); color: var(--ios-blue); }
-        .tag-green { background: rgba(52,199,89,0.1); color: var(--ios-green); }
+        .btn-blue { background: var(--ios-blue); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 15px; }
+        .btn-red { color: var(--ios-red); background: rgba(255,59,48,0.1); border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 12px; }
+        
+        .tag { padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 800; margin-right: 5px; }
+        .tag-in { background: #E8F5E9; color: var(--ios-green); }
+        .tag-pay { background: #E3F2FD; color: var(--ios-blue); }
 
         .page { display: none; } .page.active { display: block; }
     </style>
@@ -97,37 +84,36 @@
 <body>
 
 <div id="app">
-    <div class="header">
+    <div class="filter-header">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h1>恒丰 Pro</h1>
-            <button class="btn-ghost" onclick="manualAdd()">+ 快速录入</button>
+            <button style="border:none; background:none; color:var(--ios-blue); font-weight:600;" onclick="loadData()">🔄 刷新</button>
         </div>
-        <div class="time-filter">
-            <button class="time-btn active" onclick="setTime('all', this)">全部</button>
-            <button class="time-btn" onclick="setTime('month', this)">本月</button>
-            <button class="time-btn" onclick="setTime('year', this)">本年</button>
+        <div class="date-picker-row">
+            <i>📅</i>
+            <input type="date" id="start-date" class="date-input" onchange="renderAll()">
+            <span class="date-sep">至</span>
+            <input type="date" id="end-date" class="date-input" onchange="renderAll()">
         </div>
     </div>
 
     <section id="home" class="page active">
         <div class="hero-card">
-            <div style="font-size: 13px; opacity: 0.7; font-weight: 600;">当前区间净结余</div>
+            <div style="font-size: 12px; opacity: 0.6; font-weight: 600; text-transform: uppercase;">期间净收益</div>
             <div class="hero-val" id="profit-val">¥ 0.00</div>
-            <div style="display:flex; gap:15px; margin-top:20px; font-size:12px; opacity:0.8">
-                <span>收: <b id="sum-ar">0</b></span>
-                <span>支: <b id="sum-ap">0</b></span>
-                <span>工: <b id="sum-wg">0</b></span>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:20px; font-size:11px; opacity:0.8">
+                <div>应收:<br><b id="sum-ar">0</b></div>
+                <div>应付:<br><b id="sum-ap">0</b></div>
+                <div>工费:<br><b id="sum-wg">0</b></div>
             </div>
         </div>
         <div class="container">
-            <div class="ios-card" style="background: linear-gradient(135deg, #fff 0%, #f0f7ff 100%);">
-                <div>
-                    <div class="name">同步数据</div>
-                    <div class="sub">导入发票 Excel 自动核算</div>
-                </div>
-                <button class="btn-primary" style="width:auto;" onclick="document.getElementById('file-up').click()">📥 导入</button>
+            <div class="ios-card" onclick="document.getElementById('file-up').click()">
+                <div><div class="name">Excel 智能导入</div><div class="sub">点击上传税务局导出的发票清单</div></div>
+                <div style="font-size:24px;">📥</div>
                 <input type="file" id="file-up" hidden onchange="handleExcel(this)">
             </div>
+            <button class="btn-blue" style="width:100%; margin-top:10px;" onclick="manualAdd()">+ 手动建立新档案</button>
         </div>
     </section>
 
@@ -136,8 +122,8 @@
     <section id="worker" class="page"><div class="container" id="list-worker"></div></section>
 
     <div id="sheet" class="sheet" onclick="if(event.target===this)this.style.display='none'">
-        <div class="sheet-content">
-            <div id="sheet-header" style="margin-bottom:30px"></div>
+        <div class="sheet-content" onclick="event.stopPropagation()">
+            <div id="sheet-header"></div>
             <div id="sheet-body"></div>
         </div>
     </div>
@@ -156,33 +142,22 @@
     const supabaseClient = supabase.createClient(S_URL, S_KEY);
 
     let db = { invs:[], vInvs:[], pays:[], vPays:[], workers:[], wLogs:[], wPays:[] };
-    let timeRange = 'all';
 
-    function setTime(range, el) {
-        document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
-        el.classList.add('active');
-        timeRange = range;
-        renderAll();
-    }
+    // 初始化日期：本月第一天到今天
+    window.onload = () => {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        document.getElementById('start-date').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('end-date').value = now.toISOString().split('T')[0];
+        loadData();
+    };
 
     function switchTab(id, el) {
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         el.classList.add('active');
-        loadData();
-    }
-
-    // 核心过滤逻辑
-    function filterByTime(list, dateField = 'inv_date') {
-        if(timeRange === 'all') return list;
-        const now = new Date();
-        return list.filter(item => {
-            const d = new Date(item[dateField] || item.created_at || item.pay_date || item.work_date);
-            if(timeRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            if(timeRange === 'year') return d.getFullYear() === now.getFullYear();
-            return true;
-        });
+        renderAll();
     }
 
     async function loadData() {
@@ -193,62 +168,61 @@
         renderAll();
     }
 
-    function renderAll() {
-        const invs = filterByTime(db.invs);
-        const pays = filterByTime(db.pays, 'pay_date');
-        const vInvs = filterByTime(db.vInvs);
-        const vPays = filterByTime(db.vPays, 'pay_date');
-        const wLogs = filterByTime(db.wLogs, 'work_date');
-        const wPays = filterByTime(db.wPays, 'pay_date');
+    // 通用日期过滤
+    function filterData(list, dateKey) {
+        const start = new Date(document.getElementById('start-date').value);
+        const end = new Date(document.getElementById('end-date').value);
+        end.setHours(23, 59, 59); // 包含结束当天
 
-        const ar = invs.reduce((a,b)=>a+b.amount,0) - pays.reduce((a,b)=>a+b.amount,0);
-        const ap = vInvs.reduce((a,b)=>a+b.amount,0) - vPays.reduce((a,b)=>a+b.amount,0);
+        return list.filter(item => {
+            const d = new Date(item[dateKey] || item.created_at || item.pay_date || item.inv_date || item.work_date);
+            return d >= start && d <= end;
+        });
+    }
+
+    function renderAll() {
+        const f_invs = filterData(db.invs, 'inv_date');
+        const f_pays = filterData(db.pays, 'pay_date');
+        const f_vInvs = filterData(db.vInvs, 'inv_date');
+        const f_vPays = filterData(db.vPays, 'pay_date');
+        const f_wLogs = filterData(db.wLogs, 'work_date');
+        const f_wPays = filterData(db.wPays, 'pay_date');
+
+        const ar = f_invs.reduce((a,b)=>a+b.amount,0) - f_pays.reduce((a,b)=>a+b.amount,0);
+        const ap = f_vInvs.reduce((a,b)=>a+b.amount,0) - f_vPays.reduce((a,b)=>a+b.amount,0);
+        
         let wgArrears = 0;
         db.workers.forEach(w => {
-            const earned = wLogs.filter(l=>l.worker_name===w.name).reduce((a,b)=>a+b.hours,0) * w.hourly_rate;
-            const paid = wPays.filter(p=>p.worker_name===w.name).reduce((a,b)=>a+b.amount,0);
+            const earned = f_wLogs.filter(l=>l.worker_name===w.name).reduce((a,b)=>a+b.hours,0) * w.hourly_rate;
+            const paid = f_wPays.filter(p=>p.worker_name===w.name).reduce((a,b)=>a+b.amount,0);
             wgArrears += (earned - paid);
         });
 
-        animateVal('profit-val', ar - ap - wgArrears);
+        document.getElementById('profit-val').innerText = `¥ ${(ar - ap - wgArrears).toLocaleString(undefined, {minimumFractionDigits:2})}`;
         document.getElementById('sum-ar').innerText = `¥${ar.toFixed(0)}`;
         document.getElementById('sum-ap').innerText = `¥${ap.toFixed(0)}`;
         document.getElementById('sum-wg').innerText = `¥${wgArrears.toFixed(0)}`;
 
-        renderCatList('list-income', invs, pays, 'client_name', 'invoices', 'payments');
-        renderCatList('list-vendor', vInvs, vPays, 'vendor_name', 'vendor_invoices', 'vendor_payments');
-        renderWorkerList(wLogs, wPays);
+        renderCategoryList('list-income', f_invs, f_pays, 'client_name', 'invoices', 'payments');
+        renderCategoryList('list-vendor', f_vInvs, f_vPays, 'vendor_name', 'vendor_invoices', 'vendor_payments');
+        renderWorkerList(f_wLogs, f_wPays);
     }
 
-    function animateVal(id, target) {
-        const el = document.getElementById(id);
-        const start = 0;
-        const duration = 500;
-        let startTime = null;
-        function step(timestamp) {
-            if(!startTime) startTime = timestamp;
-            const progress = Math.min((timestamp - startTime) / duration, 1);
-            const current = progress * target;
-            el.innerText = `¥ ${current.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-            if(progress < 1) window.requestAnimationFrame(step);
-        }
-        window.requestAnimationFrame(step);
-    }
-
-    function renderCatList(targetId, items, pays, key, t1, t2) {
+    function renderCategoryList(targetId, items, pays, key, t1, t2) {
         const container = document.getElementById(targetId);
-        container.innerHTML = `<div class="section-title">管理列表</div>`;
+        container.innerHTML = `<div style="padding:20px 5px; font-weight:800; font-size:18px;">往来名单</div>`;
         const names = [...new Set([...db.invs, ...db.vInvs].map(x=>x[key]).filter(Boolean))];
         
         names.forEach(name => {
             const total = items.filter(i=>i[key]===name).reduce((s,i)=>s+i.amount,0);
             const paid = pays.filter(p=>p[key]===name).reduce((s,p)=>s+p.amount,0);
-            if(total === 0 && paid === 0 && timeRange !== 'all') return;
-            
+            const diff = total - paid;
+            if(total === 0 && paid === 0) return; // 期间无变动不显示
+
             container.innerHTML += `
                 <div class="ios-card" onclick="showSheet('${name}', '${key}', '${t1}', '${t2}')">
-                    <div><div class="name">${name}</div><div class="sub">区间流水: ¥${total.toFixed(0)}</div></div>
-                    <div class="amt" style="color:${total-paid>0?'var(--ios-red)':'var(--ios-green)'}">¥${(total-paid).toFixed(0)}</div>
+                    <div><div class="name">${name}</div><div class="sub">期间流水: ¥${total.toFixed(0)}</div></div>
+                    <div class="amt" style="color:${diff>0?'var(--ios-red)':'var(--ios-green)'}">¥${diff.toFixed(0)}</div>
                 </div>`;
         });
     }
@@ -258,25 +232,26 @@
         sheet.style.display = 'block';
         document.getElementById('sheet-header').innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:start">
-                <div><h2 style="margin:0">${name}</h2><p class="sub">单位账目管理</p></div>
-                <button class="btn-danger" onclick="deleteEntity('${name}','${keyCol}','${t1}','${t2}')">彻底删除单位</button>
+                <div><h2 style="margin:0">${name}</h2><p class="sub">账户明细管理</p></div>
+                <button class="btn-red" onclick="deleteEntity('${name}','${keyCol}','${t1}','${t2}')">删除单位</button>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn-primary" style="flex:1" onclick="quickPay('${name}','${keyCol}','${t2}')">记款项</button>
-                <button class="btn-primary" style="flex:1; background:#8E8E93" onclick="manualFix('${name}','${keyCol}','${t1}')">校准</button>
+                <button class="btn-blue" style="flex:1" onclick="quickPay('${name}','${keyCol}','${t2}')">记一笔款</button>
+                <button class="btn-blue" style="flex:1; background:#8E8E93" onclick="manualFix('${name}','${keyCol}','${t1}')">校准账面</button>
             </div>`;
         
+        // 详情显示全部历史（不受过滤器影响，方便核账）
         const {data:d1} = await supabaseClient.from(t1).select('*').eq(keyCol, name);
         const {data:d2} = await supabaseClient.from(t2).select('*').eq(keyCol, name);
         
-        let html = '<div style="margin-top:30px">';
-        [...(d1||[]).map(x=>({...x,tag:'项目',c:'blue'})), ...(d2||[]).map(x=>({...x,tag:'款项',c:'green'}))]
+        let html = '<div style="margin-top:25px;">';
+        [...(d1||[]).map(x=>({...x,tag:'项目',c:'tag-pay'})), ...(d2||[]).map(x=>({...x,tag:'款项',c:'tag-in'}))]
         .sort((a,b)=>new Date(b.inv_date||b.pay_date||b.created_at) - new Date(a.inv_date||a.pay_date||a.created_at))
         .forEach(item => {
             html += `
-                <div style="display:flex; justify-content:space-between; padding:15px 0; border-bottom:1px solid rgba(0,0,0,0.05)">
-                    <div><span class="tag tag-${item.c}">${item.tag}</span><span style="font-size:13px">${item.inv_date||item.pay_date||''}</span>
-                    <div class="sub" style="font-size:11px">${item.invoice_num||item.remark||''}</div></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid rgba(0,0,0,0.05)">
+                    <div><span class="tag ${item.c}">${item.tag}</span><span style="font-size:13px; font-weight:600;">${item.inv_date||item.pay_date||''}</span>
+                    <div class="sub" style="font-size:11px">${item.invoice_num||item.remark||'无备注'}</div></div>
                     <div style="text-align:right"><div class="amt">¥${item.amount.toFixed(2)}</div>
                     <button style="border:none; background:none; color:var(--ios-red); font-size:11px" onclick="deleteRec('${item.id}','${item.tag==='项目'?t1:t2}')">删除</button></div>
                 </div>`;
@@ -284,51 +259,19 @@
         document.getElementById('sheet-body').innerHTML = html + '</div>';
     }
 
-    async function deleteEntity(n,k,t1,t2) {
-        if(confirm("确定永久删除该单位及其所有历史记录？")) {
-            await supabaseClient.from(t1).delete().eq(k,n);
-            await supabaseClient.from(t2).delete().eq(k,n);
-            sheet.style.display='none'; loadData();
-        }
-    }
-
-    async function deleteRec(id, tbl) {
-        if(confirm("确定删除此记录？")) {
-            await supabaseClient.from(tbl).delete().eq('id',id);
-            sheet.style.display='none'; loadData();
-        }
-    }
-
     function renderWorkerList(wLogs, wPays) {
         const container = document.getElementById('list-worker');
-        container.innerHTML = `<div class="section-title">工人名册</div>`;
+        container.innerHTML = `<div style="padding:20px 5px; font-weight:800; font-size:18px;">工人工资单</div>`;
         db.workers.forEach(w => {
             const hours = wLogs.filter(l=>l.worker_name===w.name).reduce((a,b)=>a+b.hours,0);
             const paid = wPays.filter(p=>p.worker_name===w.name).reduce((a,b)=>a+b.amount,0);
             const due = (hours * w.hourly_rate) - paid;
             container.innerHTML += `
                 <div class="ios-card" onclick="showSheet('${w.name}', 'worker_name', 'work_logs', 'worker_payments')">
-                    <div><div class="name">${w.name}</div><div class="sub">${w.hourly_rate}元/时 | 区间:${hours}h</div></div>
+                    <div><div class="name">${w.name}</div><div class="sub">${w.hourly_rate}元/时 | 期间:${hours}h</div></div>
                     <div class="amt" style="color:var(--ios-red)">¥${due.toFixed(0)}</div>
                 </div>`;
         });
-    }
-
-    // 复用之前的手动添加逻辑，整合更美观的 prompt
-    async function manualAdd() {
-        const type = prompt("添加类型: 1.客户 2.供应商 3.工人 (输入数字)");
-        const name = prompt("名称:");
-        if(!name) return;
-        if(type === '3') {
-            const r = prompt("时薪:");
-            await supabaseClient.from('workers').upsert({name, hourly_rate: parseFloat(r)});
-        } else {
-            const tbl = type === '1' ? 'invoices' : 'vendor_invoices';
-            const col = type === '1' ? 'client_name' : 'vendor_name';
-            const amt = prompt("初始金额 (无则填0):");
-            await supabaseClient.from(tbl).insert({[col]:name, amount:parseFloat(amt), invoice_num:'手动创建-'+Date.now()});
-        }
-        loadData();
     }
 
     async function handleExcel(input) {
@@ -345,24 +288,31 @@
             });
             if(upInvs.length) await supabaseClient.from('invoices').upsert(upInvs, {onConflict:'invoice_num'});
             if(upVInvs.length) await supabaseClient.from('vendor_invoices').upsert(upVInvs, {onConflict:'invoice_num'});
-            alert("同步成功"); loadData();
+            alert("Excel 数据同步成功"); loadData();
         };
         reader.readAsArrayBuffer(file);
     }
 
-    async function quickPay(n,c,t){ 
-        const a=prompt("金额:"); 
-        if(a) await supabaseClient.from(t).insert({[c]:n, amount:parseFloat(a), pay_date:new Date().toISOString().split('T')[0]}); 
-        loadData(); document.getElementById('sheet').style.display='none'; 
+    async function manualAdd() {
+        const type = prompt("类型: 1.客户 2.供应商 3.工人");
+        const name = prompt("名称:");
+        if(!name) return;
+        if(type === '3') {
+            const r = prompt("时薪:");
+            await supabaseClient.from('workers').upsert({name, hourly_rate: parseFloat(r)});
+        } else {
+            const tbl = type === '1' ? 'invoices' : 'vendor_invoices';
+            const col = type === '1' ? 'client_name' : 'vendor_name';
+            const amt = prompt("初始欠款 (没有填0):");
+            await supabaseClient.from(tbl).insert({[col]:name, amount:parseFloat(amt), invoice_num:'手动创建-'+Date.now(), inv_date:new Date().toISOString().split('T')[0]});
+        }
+        loadData();
     }
 
-    async function manualFix(n,c,t){ 
-        const a=prompt("校准金额(正加负减):"); 
-        if(a) await supabaseClient.from(t).insert({[c]:n, amount:parseFloat(a), inv_date:new Date().toISOString().split('T')[0], invoice_num:'校准-'+Date.now()}); 
-        loadData(); document.getElementById('sheet').style.display='none'; 
-    }
-
-    window.onload = loadData;
+    async function quickPay(n,c,t){ const a=prompt("输入金额:"); if(a) await supabaseClient.from(t).insert({[c]:n, amount:parseFloat(a), pay_date:new Date().toISOString().split('T')[0]}); loadData(); document.getElementById('sheet').style.display='none'; }
+    async function manualFix(n,c,t){ const a=prompt("输入校准值(正加负减):"); if(a) await supabaseClient.from(t).insert({[c]:n, amount:parseFloat(a), inv_date:new Date().toISOString().split('T')[0], invoice_num:'校准-'+Date.now()}); loadData(); document.getElementById('sheet').style.display='none'; }
+    async function deleteEntity(n,k,t1,t2){ if(confirm("彻底删除？")){ await supabaseClient.from(t1).delete().eq(k,n); await supabaseClient.from(t2).delete().eq(k,n); if(k==='worker_name') await supabaseClient.from('workers').delete().eq('name',n); document.getElementById('sheet').style.display='none'; loadData(); }}
+    async function deleteRec(id,tbl){ if(confirm("删除记录？")){ await supabaseClient.from(tbl).delete().eq('id',id); document.getElementById('sheet').style.display='none'; loadData(); }}
 </script>
 </body>
 </html>
