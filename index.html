@@ -3,58 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>恒丰财务 Pro - 16.0 极简版</title>
+    <title>恒丰财务 Pro - 16.5 全功能版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { 
-            --ios-blue: #007AFF; --ios-green: #34C759; --ios-red: #FF3B30; 
+            --ios-blue: #007AFF; --ios-green: #34C759; --ios-red: #FF3B30; --ios-orange: #FF9500;
             --bg: #F8F9FB; --card: #FFFFFF; --text-p: #1D1D1F; --text-s: #86868B;
         }
-        body { background: var(--bg); color: var(--text-p); font-family: -apple-system, "SF Pro Display", sans-serif; margin: 0; padding-bottom: 100px; -webkit-font-smoothing: antialiased; }
+        body { background: var(--bg); color: var(--text-p); font-family: -apple-system, sans-serif; margin: 0; padding-bottom: 100px; -webkit-font-smoothing: antialiased; }
 
-        /* ------------------ 1. 审美升级：首页总览看板 ------------------ */
-        .home-dashboard { padding: 60px 25px 40px; background: #000; color: #fff; border-bottom-right-radius: 40px; border-bottom-left-radius: 40px; margin-bottom: 30px; }
-        .home-dashboard .label { font-size: 13px; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; }
-        .home-dashboard .value { font-size: 42px; font-weight: 700; margin: 8px 0 20px; font-family: 'SF Mono', monospace; }
-        
-        .date-capsule { display: flex; background: rgba(255,255,255,0.12); padding: 8px 15px; border-radius: 20px; gap: 10px; align-items: center; width: fit-content; }
-        .date-capsule input { background: transparent; border: none; color: #fff; font-size: 12px; font-weight: 500; outline: none; cursor: pointer; }
+        /* 首页总览 */
+        .home-dashboard { padding: 60px 25px 40px; background: #000; color: #fff; border-bottom-right-radius: 40px; border-bottom-left-radius: 40px; margin-bottom: 25px; }
+        .value { font-size: 40px; font-weight: 700; margin: 8px 0 20px; font-family: 'SF Mono', monospace; }
+        .date-capsule { display: flex; background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 20px; gap: 8px; width: fit-content; }
+        .date-capsule input { background: transparent; border: none; color: #fff; font-size: 11px; outline: none; }
 
-        /* ------------------ 2. 逻辑升级：子页面轻量化吸顶 ------------------ */
-        .sub-header { position: sticky; top: 0; background: rgba(248, 249, 251, 0.85); backdrop-filter: blur(20px); padding: 20px 25px 15px; z-index: 1000; display: none; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
-        .sub-header.active { display: block; }
-        .sub-header h2 { margin: 0 0 12px; font-size: 22px; font-weight: 700; }
-        .sub-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
-        .sub-stat-item span { font-size: 11px; color: var(--text-s); display: block; margin-bottom: 2px; }
-        .sub-stat-item b { font-size: 15px; font-weight: 600; }
+        /* 子页头部 */
+        .sub-header { position: sticky; top: 0; background: rgba(248, 249, 251, 0.9); backdrop-filter: blur(20px); padding: 20px 25px; z-index: 1000; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
+        .sub-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .sub-stat-item span { font-size: 10px; color: var(--text-s); display: block; }
+        .sub-stat-item b { font-size: 14px; }
 
-        /* ------------------ 3. 卡片与列表 ------------------ */
-        .card-section { background: var(--card); border-radius: 24px; margin: 0 20px 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); }
-        .card-section h3 { font-size: 17px; font-weight: 600; margin: 0 0 15px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .summary-mini { display: flex; justify-content: space-between; border-top: 0.5px solid #F2F2F7; padding-top: 15px; }
-        .mini-box { text-align: center; flex: 1; }
-        .mini-box small { font-size: 10px; color: var(--text-s); display: block; margin-bottom: 4px; }
-        .mini-box b { font-size: 13px; }
-
+        /* 卡片与列表 */
+        .card-section { background: var(--card); border-radius: 24px; margin: 0 20px 15px; padding: 20px; border: 1px solid rgba(0,0,0,0.03); }
         .list-wrap { margin: 0 20px; background: var(--card); border-radius: 24px; overflow: hidden; }
-        .ios-row { padding: 18px 20px; border-bottom: 0.5px solid #F2F2F7; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
-        .ios-row:active { background: #F2F2F7; }
-        .row-info b { font-size: 16px; font-weight: 500; }
-        .row-val { font-family: 'SF Mono'; font-weight: 700; font-size: 16px; }
+        .ios-row { padding: 18px 20px; border-bottom: 0.5px solid #F2F2F7; display: flex; justify-content: space-between; align-items: center; }
+        .row-val { font-family: 'SF Mono'; font-weight: 700; }
 
-        /* 按钮与弹窗 */
-        .fab-btn { background: var(--ios-blue); color: #fff; border: none; border-radius: 16px; padding: 14px; font-weight: 600; width: calc(100% - 40px); margin: 10px 20px 25px; font-size: 15px; }
+        /* 弹窗样式 */
         .sheet-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2000; display: none; backdrop-filter: blur(10px); }
-        .sheet-body { position: absolute; bottom: 0; width: 100%; height: 85%; background: var(--bg); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 30px 25px; box-sizing: border-box; overflow-y: auto; }
+        .sheet-body { position: absolute; bottom: 0; width: 100%; height: 85%; background: var(--bg); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 25px; box-sizing: border-box; overflow-y: auto; }
+        
+        /* 按钮 */
+        .btn { border: none; border-radius: 14px; padding: 14px; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; }
+        .btn-p { background: var(--ios-blue); color: #fff; width: calc(100% - 40px); margin: 10px 20px 20px; }
+        .btn-action { background: #fff; color: var(--text-p); border: 0.5px solid #DDD; width: 100%; margin-bottom: 10px; }
+        .btn-danger { color: var(--ios-red); font-size: 12px; background: none; margin-top: 10px; }
 
-        /* 底部导航 */
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 85px; background: rgba(255,255,255,0.88); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid rgba(0,0,0,0.1); z-index: 1000; }
+        /* 导航 */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 85px; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #DDD; z-index: 1000; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #999; text-decoration: none; font-size: 10px; font-weight: 600; }
         .nav-item.active { color: var(--ios-blue); }
-        .nav-item i { font-size: 22px; margin-bottom: 4px; font-style: normal; }
-
         .page { display: none; } .page.active { display: block; }
     </style>
 </head>
@@ -63,94 +53,90 @@
 <div id="app">
     <section id="home" class="page active">
         <header class="home-dashboard">
-            <span class="label">恒丰财务总览 · 净收益</span>
+            <span style="opacity:0.6; font-size:12px;">恒丰财务云 · 周期净收益</span>
             <div class="value" id="h-net">¥ 0.00</div>
             <div class="date-capsule">
-                <input type="date" id="s-date" onchange="renderAll()">
-                <span style="opacity:0.5; font-size:10px;">至</span>
-                <input type="date" id="e-date" onchange="renderAll()">
+                <input type="date" id="s-date" onchange="load()">
+                <input type="date" id="e-date" onchange="load()">
             </div>
         </header>
 
         <div class="card-section" onclick="tab('income',document.getElementById('n-i'))">
-            <h3>💰 客户业务 <span style="color:#CCC; font-weight:400; font-size:20px;">›</span></h3>
-            <div class="summary-mini">
-                <div class="mini-box"><small>应收</small><b id="h-i-t">¥0</b></div>
-                <div class="mini-box"><small>实收</small><b id="h-i-p" style="color:var(--ios-green)">¥0</b></div>
-                <div class="mini-box"><small>待收</small><b id="h-i-d" style="color:var(--ios-red)">¥0</b></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;"><b>💰 客户业务</b><span>›</span></div>
+            <div style="display:flex; justify-content:space-between; text-align:center;">
+                <div><small style="color:var(--text-s); font-size:10px;">应收</small><br><b id="h-i-t">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">实收</small><br><b id="h-i-p" style="color:var(--ios-green)">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">待收</small><br><b id="h-i-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </div>
 
         <div class="card-section" onclick="tab('vendor',document.getElementById('n-v'))">
-            <h3>📉 供应商支出 <span style="color:#CCC; font-weight:400; font-size:20px;">›</span></h3>
-            <div class="summary-mini">
-                <div class="mini-box"><small>应付</small><b id="h-v-t">¥0</b></div>
-                <div class="mini-box"><small>实付</small><b id="h-v-p" style="color:var(--ios-green)">¥0</b></div>
-                <div class="mini-box"><small>待付</small><b id="h-v-d" style="color:var(--ios-red)">¥0</b></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;"><b>📉 供应商支出</b><span>›</span></div>
+            <div style="display:flex; justify-content:space-between; text-align:center;">
+                <div><small style="color:var(--text-s); font-size:10px;">应付</small><br><b id="h-v-t">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">已付</small><br><b id="h-v-p" style="color:var(--ios-green)">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">待付</small><br><b id="h-v-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </div>
 
         <div class="card-section" onclick="tab('worker',document.getElementById('n-w'))">
-            <h3>👷 劳务工薪 <span style="color:#CCC; font-weight:400; font-size:20px;">›</span></h3>
-            <div class="summary-mini">
-                <div class="mini-box"><small>总成本</small><b id="h-w-t">¥0</b></div>
-                <div class="mini-box"><small>已发</small><b id="h-w-p" style="color:var(--ios-green)">¥0</b></div>
-                <div class="mini-box"><small>结余</small><b id="h-w-d" style="color:var(--ios-red)">¥0</b></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;"><b>👷 工薪支出</b><span>›</span></div>
+            <div style="display:flex; justify-content:space-between; text-align:center;">
+                <div><small style="color:var(--text-s); font-size:10px;">总成本</small><br><b id="h-w-t">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">已发</small><br><b id="h-w-p" style="color:var(--ios-green)">¥0</b></div>
+                <div><small style="color:var(--text-s); font-size:10px;">待发</small><br><b id="h-w-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </div>
-        
-        <button class="fab-btn" style="background:#f0f0f5; color:#333;" onclick="document.getElementById('xl-up').click()">导入数电发票 (Excel)</button>
-        <input type="file" id="xl-up" hidden onchange="handleExcel(this)">
     </section>
 
     <section id="income" class="page">
-        <header class="sub-header active">
-            <h2>客户账目</h2>
+        <header class="sub-header">
+            <h2 style="margin:0">客户列表</h2>
             <div class="sub-stat-grid">
                 <div class="sub-stat-item"><span>总应收</span><b id="si-t">¥0</b></div>
-                <div class="sub-stat-item"><span>实收</span><b id="si-p" style="color:var(--ios-green)">¥0</b></div>
+                <div class="sub-stat-item"><span>已收</span><b id="si-p">¥0</b></div>
                 <div class="sub-stat-item"><span>待收</span><b id="si-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </header>
-        <button class="fab-btn" onclick="addEntity('client_name','invoices')">+ 新增客户</button>
+        <button class="btn btn-p" onclick="addEntity('client_name','invoices')">+ 新增客户档案</button>
         <div id="list-income" class="list-wrap"></div>
     </section>
 
     <section id="vendor" class="page">
-        <header class="sub-header active">
-            <h2>供应商账单</h2>
+        <header class="sub-header">
+            <h2 style="margin:0">供应商列表</h2>
             <div class="sub-stat-grid">
                 <div class="sub-stat-item"><span>总应付</span><b id="sv-t">¥0</b></div>
-                <div class="sub-stat-item"><span>实付</span><b id="sv-p" style="color:var(--ios-green)">¥0</b></div>
+                <div class="sub-stat-item"><span>已付</span><b id="sv-p">¥0</b></div>
                 <div class="sub-stat-item"><span>待付</span><b id="sv-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </header>
-        <button class="fab-btn" onclick="addEntity('vendor_name','vendor_invoices')">+ 新增供应商</button>
+        <button class="btn btn-p" onclick="addEntity('vendor_name','vendor_invoices')">+ 新增供应商</button>
         <div id="list-vendor" class="list-wrap"></div>
     </section>
 
     <section id="worker" class="page">
-        <header class="sub-header active">
-            <h2>劳务薪酬</h2>
+        <header class="sub-header">
+            <h2 style="margin:0">工薪管理</h2>
             <div class="sub-stat-grid">
-                <div class="sub-stat-item"><span>薪资总额</span><b id="sw-t">¥0</b></div>
-                <div class="sub-stat-item"><span>已发放</span><b id="sw-p" style="color:var(--ios-green)">¥0</b></div>
-                <div class="sub-stat-item"><span>待发余额</span><b id="sw-d" style="color:var(--ios-red)">¥0</b></div>
+                <div class="sub-stat-item"><span>应付薪资</span><b id="sw-t">¥0</b></div>
+                <div class="sub-stat-item"><span>已发放</span><b id="sw-p">¥0</b></div>
+                <div class="sub-stat-item"><span>待发放</span><b id="sw-d" style="color:var(--ios-red)">¥0</b></div>
             </div>
         </header>
-        <button class="fab-btn" onclick="addW()">+ 新增工人</button>
+        <button class="btn btn-p" onclick="addW()">+ 新增工人档案</button>
         <div id="list-worker" class="list-wrap"></div>
     </section>
 
     <div id="sheet" class="sheet-modal" onclick="if(event.target===this)this.style.display='none'">
         <div class="sheet-body" onclick="event.stopPropagation()">
             <div id="sheet-head"></div>
-            <div id="sheet-body-content" style="margin-top:25px;"></div>
+            <div id="sheet-content" style="margin-top:20px;"></div>
         </div>
     </div>
 
     <nav class="nav-bar">
-        <a class="nav-item active" onclick="tab('home',this)"><i>🏠</i>首页</a>
+        <a class="nav-item active" onclick="tab('home',this)"><i>🏠</i>总览</a>
         <a class="nav-item" id="n-i" onclick="tab('income',this)"><i>💰</i>客户</a>
         <a class="nav-item" id="n-v" onclick="tab('vendor',this)"><i>📉</i>账单</a>
         <a class="nav-item" id="n-w" onclick="tab('worker',this)"><i>👷</i>劳务</a>
@@ -158,15 +144,11 @@
 </div>
 
 <script>
-    // 配置与数据逻辑 (保持你之前的 Supabase 连接)
     const S_URL = "https://vjelnswcmypvypegqxrb.supabase.co";
     const S_KEY = "sb_publishable_BUhR8WlHyaOHnK5IjEGKtw_lcre2gFT";
     const sb = supabase.createClient(S_URL, S_KEY);
     let db = { invs:[], vInvs:[], pays:[], vPays:[], workers:[], logs:[] };
 
-    // ... (加载数据、格式化、日期过滤等逻辑与之前 15.0 版本一致，但在渲染时去除了冗余的 Header 切换) ...
-    // 这里为了简洁，我保留了核心渲染函数，并对 UI 绑定做了优化
-    
     async function load() {
         const f = async (t) => (await sb.from(t).select('*')).data || [];
         db.invs = await f('invoices'); db.pays = await f('payments');
@@ -174,8 +156,6 @@
         db.workers = await f('workers'); db.logs = await f('wage_logs');
         renderAll();
     }
-
-    function fmt(n) { return '¥' + (n||0).toLocaleString(undefined, {minimumFractionDigits:2}); }
 
     function getFiltered(list, key) {
         const s = document.getElementById('s-date').value;
@@ -190,6 +170,8 @@
         });
     }
 
+    function fmt(n) { return '¥' + (n||0).toLocaleString(undefined, {minimumFractionDigits:2}); }
+
     function renderAll() {
         const fI = getFiltered(db.invs, 'inv_date'), fP = getFiltered(db.pays, 'pay_date');
         const fVI = getFiltered(db.vInvs, 'inv_date'), fVP = getFiltered(db.vPays, 'pay_date');
@@ -200,16 +182,13 @@
         const wt = fL.filter(l=>['工时','奖金','分红'].includes(l.type)).reduce((s,l)=>s+l.amount,0);
         const wp = fL.filter(l=>l.type==='发工资').reduce((s,l)=>s+l.amount,0);
 
-        // 首页更新
-        document.getElementById('h-net').innerText = fmt(it - vt - wt);
-        document.getElementById('h-i-t').innerText = fmt(it); document.getElementById('h-i-p').innerText = fmt(ip); document.getElementById('h-i-d').innerText = fmt(it-ip);
-        document.getElementById('h-v-t').innerText = fmt(vt); document.getElementById('h-v-p').innerText = fmt(vp); document.getElementById('h-v-d').innerText = fmt(vt-vp);
-        document.getElementById('h-w-t').innerText = fmt(wt); document.getElementById('h-w-p').innerText = fmt(wp); document.getElementById('h-w-d').innerText = fmt(wt-wp);
-
-        // 子页 Header 更新
-        document.getElementById('si-t').innerText = fmt(it); document.getElementById('si-p').innerText = fmt(ip); document.getElementById('si-d').innerText = fmt(it-ip);
-        document.getElementById('sv-t').innerText = fmt(vt); document.getElementById('sv-p').innerText = fmt(vp); document.getElementById('sv-d').innerText = fmt(vt-vp);
-        document.getElementById('sw-t').innerText = fmt(wt); document.getElementById('sw-p').innerText = fmt(wp); document.getElementById('sw-d').innerText = fmt(wt-wp);
+        const setV = (id, v) => document.getElementById(id).innerText = fmt(v);
+        setV('h-net', it-vt-wt); setV('h-i-t', it); setV('h-i-p', ip); setV('h-i-d', it-ip);
+        setV('h-v-t', vt); setV('h-v-p', vp); setV('h-v-d', vt-vp);
+        setV('h-w-t', wt); setV('h-w-p', wp); setV('h-w-d', wt-wp);
+        setV('si-t', it); setV('si-p', ip); setV('si-d', it-ip);
+        setV('sv-t', vt); setV('sv-p', vp); setV('sv-d', vt-vp);
+        setV('sw-t', wt); setV('sw-p', wp); setV('sw-d', wt-wp);
 
         renderList('list-income', db.invs, db.pays, 'client_name', 'invoices', 'payments', fI, fP);
         renderList('list-vendor', db.vInvs, db.vPays, 'vendor_name', 'vendor_invoices', 'vendor_payments', fVI, fVP);
@@ -224,11 +203,9 @@
             const paid = fP.filter(p=>p[key]===n).reduce((s,p)=>s+p.amount,0);
             return { n, diff: total - paid };
         }).sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
-
         sorted.forEach(item => {
             el.innerHTML += `<div class="ios-row" onclick="showDetail('${item.n}','${key}','${t1}','${t2}')">
-                <div class="row-info"><b>${item.n}</b></div>
-                <div class="row-val" style="color:${item.diff>0?'var(--ios-red)':'var(--ios-green)'}">${fmt(item.diff)}</div>
+                <b>${item.n}</b><span class="row-val" style="color:${item.diff>0?'var(--ios-red)':'var(--ios-green)'}">${fmt(item.diff)}</span>
             </div>`;
         });
     }
@@ -242,25 +219,59 @@
         }).sort((a,b) => b.diff - a.diff);
         sorted.forEach(item => {
             el.innerHTML += `<div class="ios-row" onclick="showWDetail('${item.w.name}',${item.w.hourly_rate})">
-                <div class="row-info"><b>${item.w.name}</b></div>
-                <div class="row-val" style="color:${item.diff>0?'var(--ios-red)':'var(--ios-green)'}">${fmt(item.diff)}</div>
+                <b>${item.w.name}</b><span class="row-val" style="color:${item.diff>0?'var(--ios-red)':'var(--ios-green)'}">${fmt(item.diff)}</span>
             </div>`;
         });
     }
 
-    // 交互函数：切换 Tab
-    function tab(id, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        el.classList.add('active');
-        window.scrollTo(0,0); // 切换时回到顶部
+    // 交互逻辑
+    async function showDetail(n, k, t1, t2) {
+        document.getElementById('sheet').style.display='block';
+        document.getElementById('sheet-head').innerHTML = `<h3>${n}</h3>
+            <button class="btn btn-action" onclick="inputAmt('${n}','${k}','${t2}')">登记收付款 (现金流)</button>
+            <button class="btn btn-action" onclick="inputAmt('${n}','${k}','${t1}')">补录单据/调账</button>
+            <button class="btn btn-danger" onclick="delE('${n}','${k}','${t1}','${t2}')">注销档案</button>`;
+        const {data:d1} = await sb.from(t1).select('*').eq(k,n); const {data:d2} = await sb.from(t2).select('*').eq(k,n);
+        const all = [...(d1||[]).map(x=>({...x,t:'单据'})),...(d2||[]).map(x=>({...x,t:'款项'}))].sort((a,b)=>new Date(b.inv_date||b.pay_date)-new Date(a.inv_date||a.pay_date));
+        document.getElementById('sheet-content').innerHTML = all.map(i=>`<div class="ios-row"><div><small>${i.inv_date||i.pay_date}</small><br><b>${i.t}</b></div><div style="text-align:right"><b>${fmt(i.amount)}</b><br><span style="color:red;font-size:10px" onclick="delRec('${i.id}','${i.t==='单据'?t1:t2}')">删除</span></div></div>`).join('');
     }
 
-    // (其余操作函数 qRec, mInv, logW, addEntity 等保留之前版本的逻辑即可...)
-    // 这里省略具体实现以减少篇幅，逻辑完全沿用上一版本。
+    async function showWDetail(n, r) {
+        document.getElementById('sheet').style.display='block';
+        document.getElementById('sheet-head').innerHTML = `<h3>${n}</h3><small>时薪: ¥${r}</small>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                <button class="btn btn-action" onclick="logW('${n}',${r},'工时')">记工时</button>
+                <button class="btn btn-action" style="color:var(--ios-green)" onclick="logW('${n}',0,'发工资')">发工资</button>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                <button class="btn btn-action" onclick="logW('${n}',0,'奖金')">奖金</button>
+                <button class="btn btn-action" onclick="logW('${n}',0,'分红')">分红</button>
+            </div>`;
+        const {data} = await sb.from('wage_logs').select('*').eq('worker_name', n).order('log_date',{ascending:false});
+        document.getElementById('sheet-content').innerHTML = (data||[]).map(l=>`<div class="ios-row"><div><small>${l.log_date}</small><br><b>${l.type}</b> ${l.work_hours?l.work_hours+'h':''}</div><div style="text-align:right"><b>${fmt(l.amount)}</b><br><span style="color:red;font-size:10px" onclick="delRec('${l.id}','wage_logs')">删除</span></div></div>`).join('');
+    }
+
+    async function inputAmt(n,k,t){ const a=prompt("金额:"); const d=prompt("日期:",new Date().toISOString().split('T')[0]); if(a) await sb.from(t).insert({[k]:n,amount:parseFloat(a),pay_date:d,inv_date:d}); load(); document.getElementById('sheet').style.display='none'; }
+    async function logW(n,r,type){ 
+        let a=0, h=0; 
+        if(type==='工时'){ h=prompt("工时(h):"); a=h*r; } else { a=prompt(type+"金额:"); }
+        const d=prompt("日期:",new Date().toISOString().split('T')[0]);
+        if(a) await sb.from('wage_logs').insert({worker_name:n,amount:parseFloat(a),type,work_hours:h||null,log_date:d}); 
+        load(); document.getElementById('sheet').style.display='none'; 
+    }
+
+    async function addEntity(k, t) { const n=prompt("名称:"); if(n) { await sb.from(t).insert({[k]:n,amount:0,inv_date:new Date().toISOString().split('T')[0]}); load(); }}
+    async function addW() { const n=prompt("姓名:"); const r=prompt("时薪:",20); if(n) { await sb.from('workers').insert({name:n,hourly_rate:r}); load(); }}
+    async function delE(n,k,t1,t2) { if(confirm("删除档案？")){ await sb.from(t1).delete().eq(k,n); await sb.from(t2).delete().eq(k,n); load(); document.getElementById('sheet').style.display='none'; }}
+    async function delRec(id,t){ if(confirm("删除记录？")){ await sb.from(t).delete().eq('id',id); load(); document.getElementById('sheet').style.display='none'; }}
     
-    // 初始化
+    function tab(id, el) {
+        document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+    }
+
     load();
 </script>
 </body>
